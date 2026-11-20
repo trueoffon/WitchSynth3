@@ -89,7 +89,7 @@ WitchSynthAudioProcessor::WitchSynthAudioProcessor()
     }
 
     loadFavorites();
-    loadPreset(16); // Start on "[Lead] Crimewave Atari"
+    loadPreset(16);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout WitchSynthAudioProcessor::createParameterLayout()
@@ -196,6 +196,7 @@ void WitchSynthAudioProcessor::prepareToPlay(double sampleRate, int)
     for (auto& v : voices)
     {
         v.active = false;
+        v.keyDown = false;
         v.pitchEnvVal = 0.0f;
         v.snapEnvVal = 0.0f;
         v.stealGain = 1.0f;
@@ -353,6 +354,7 @@ float WitchSynthAudioProcessor::nextNoise()
 
 void WitchSynthAudioProcessor::handleNoteOn(int note, float velocity, bool monoMode, bool arpActive, float glideTime)
 {
+    const bool wasEmpty = heldNotes.empty();
     heldNotes.erase(std::remove(heldNotes.begin(), heldNotes.end(), note), heldNotes.end());
     heldNotes.push_back(note);
 
@@ -360,11 +362,12 @@ void WitchSynthAudioProcessor::handleNoteOn(int note, float velocity, bool monoM
 
     if (arpActive)
     {
-        for (int i = 1; i < numVoices; ++i) voices[i].active = false;
+        for (int i = 1; i < numVoices; ++i) { voices[i].active = false; voices[i].keyDown = false; }
         auto& v = voices[0];
-        if (!v.active || heldNotes.size() == 1)
+        if (wasEmpty || !v.active)
         {
             v.active = true;
+            v.keyDown = true;
             v.midiNote = note;
             v.velocity = velocity;
             v.currentFreq = freq;
@@ -381,17 +384,18 @@ void WitchSynthAudioProcessor::handleNoteOn(int note, float velocity, bool monoM
     if (monoMode)
     {
         auto& v = voices[0];
-        const bool wasActive = v.active && v.ampEnv.isActive();
+        const bool envAlive = v.active && v.ampEnv.isActive();
+        const bool retrigger = wasEmpty || !envAlive || (pAmpS->load() < 0.25f);
+
         v.active = true;
+        v.keyDown = true;
         v.midiNote = note;
         v.velocity = velocity;
         v.targetFreq = freq;
-        if (!wasActive)
+
+        if (!envAlive)
         {
             v.currentFreq = freq;
-            v.pitchEnvVal = 1.0f;
-            v.snapEnvVal = 1.0f;
-            v.stealGain = 1.0f;
             for (int u = 0; u < Voice::maxUnison; ++u)
             {
                 v.phase1[static_cast<size_t>(u)] = std::fmod(static_cast<float>(u) * 0.6180339f, 1.0f);
@@ -403,16 +407,24 @@ void WitchSynthAudioProcessor::handleNoteOn(int note, float velocity, bool monoM
             v.formant2.reset();
             v.combBufL.fill(0.0f);
             v.combBufR.fill(0.0f);
-            v.ampEnv.noteOn();
-            v.filterEnv.noteOn();
         }
-        else if (glideTime <= 0.001f)
+        else if (wasEmpty && glideTime <= 0.001f)
         {
             v.currentFreq = freq;
+        }
+
+        if (retrigger)
+        {
+            v.pitchEnvVal = 1.0f;
+            v.snapEnvVal = 1.0f;
+            v.stealGain = 1.0f;
+            v.ampEnv.noteOn();
+            v.filterEnv.noteOn();
         }
         return;
     }
 
+    // Poly mode: 1) free voice, 2) oldest released voice, 3) oldest active voice
     int targetIdx = -1;
     for (int i = 0; i < numVoices; ++i)
         if (!voices[i].active) { targetIdx = i; break; }
@@ -420,14 +432,27 @@ void WitchSynthAudioProcessor::handleNoteOn(int note, float velocity, bool monoM
     bool stolen = false;
     if (targetIdx < 0)
     {
-        stolen = true;
-        uint64_t oldest = UINT64_MAX;
+        uint64_t oldestRel = UINT64_MAX;
         for (int i = 0; i < numVoices; ++i)
-            if (voices[i].age < oldest) { oldest = voices[i].age; targetIdx = i; }
+        {
+            if (!voices[i].keyDown && voices[i].age < oldestRel)
+            {
+                oldestRel = voices[i].age;
+                targetIdx = i;
+            }
+        }
+        if (targetIdx < 0)
+        {
+            uint64_t oldest = UINT64_MAX;
+            for (int i = 0; i < numVoices; ++i)
+                if (voices[i].age < oldest) { oldest = voices[i].age; targetIdx = i; }
+        }
+        stolen = true;
     }
 
     auto& v = voices[targetIdx];
     v.active = true;
+    v.keyDown = true;
     v.midiNote = note;
     v.velocity = velocity;
     v.currentFreq = freq;
@@ -459,6 +484,7 @@ void WitchSynthAudioProcessor::handleNoteOff(int note, bool monoMode, bool arpAc
     {
         if (heldNotes.empty() && voices[0].active)
         {
+            voices[0].keyDown = false;
             voices[0].ampEnv.noteOff();
             voices[0].filterEnv.noteOff();
         }
@@ -476,19 +502,29 @@ void WitchSynthAudioProcessor::handleNoteOff(int note, bool monoMode, bool arpAc
         }
         else if (v.active)
         {
+            v.keyDown = false;
             v.ampEnv.noteOff();
             v.filterEnv.noteOff();
         }
         return;
     }
 
-    for (auto& v : voices)
+    // Release ONLY the oldest held voice with matching note (protects newly triggered back-to-back notes!)
+    int oldestMatch = -1;
+    uint64_t minAge = UINT64_MAX;
+    for (int i = 0; i < numVoices; ++i)
     {
-        if (v.active && v.midiNote == note)
+        if (voices[i].active && voices[i].keyDown && voices[i].midiNote == note && voices[i].age < minAge)
         {
-            v.ampEnv.noteOff();
-            v.filterEnv.noteOff();
+            minAge = voices[i].age;
+            oldestMatch = i;
         }
+    }
+    if (oldestMatch >= 0)
+    {
+        voices[oldestMatch].keyDown = false;
+        voices[oldestMatch].ampEnv.noteOff();
+        voices[oldestMatch].filterEnv.noteOff();
     }
 }
 
@@ -514,7 +550,7 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
     if (panicFlag.exchange(false))
     {
         heldNotes.clear();
-        for (auto& v : voices) { v.active = false; v.ampEnv.reset(); v.filterEnv.reset(); v.combBufL.fill(0.0f); v.combBufR.fill(0.0f); }
+        for (auto& v : voices) { v.active = false; v.keyDown = false; v.ampEnv.reset(); v.filterEnv.reset(); v.combBufL.fill(0.0f); v.combBufR.fill(0.0f); }
         resetFxFlag.store(true);
         if (auto* frz = apvts.getParameter("reverbFreeze")) frz->setValueNotifyingHost(0.0f);
         if (auto* ts = apvts.getParameter("tapeStop")) ts->setValueNotifyingHost(0.0f);
@@ -554,32 +590,50 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
     const bool arpActive = arpMode >= 2;
     const float glideTime = pGlideTime->load();
 
+    // Sample-accurate MIDI dispatch: at any identical samplePosition, process NoteOffs BEFORE NoteOns!
+    auto it = midiMessages.cbegin();
+    const auto endIt = midiMessages.cend();
+    while (it != endIt && (*it).samplePosition < offset) ++it;
+
     int currentLocal = 0;
     const int endOffset = offset + nSamples;
-    for (const auto metadata : midiMessages)
+    while (it != endIt && (*it).samplePosition < endOffset)
     {
-        if (metadata.samplePosition < offset || metadata.samplePosition >= endOffset)
-            continue;
-        const int eventPos = metadata.samplePosition - offset;
+        const int eventPos = (*it).samplePosition - offset;
         if (eventPos > currentLocal)
+        {
             renderAudioSegment(buffer, offset + currentLocal, eventPos - currentLocal, bpm, hostPlaying, hostPpq);
+            currentLocal = eventPos;
+        }
 
-        const auto msg = metadata.getMessage();
-        if (msg.isNoteOn())
-            handleNoteOn(msg.getNoteNumber(), msg.getFloatVelocity(), monoMode, arpActive, glideTime);
-        else if (msg.isNoteOff())
-            handleNoteOff(msg.getNoteNumber(), monoMode, arpActive);
-        else if (msg.isPitchWheel())
+        auto groupEnd = it;
+        while (groupEnd != endIt && ((*groupEnd).samplePosition - offset) == eventPos)
+            ++groupEnd;
+
+        for (auto mIt = it; mIt != groupEnd; ++mIt)
         {
-            const float norm = (static_cast<float>(msg.getPitchWheelValue()) - 8192.0f) / 8192.0f;
-            pitchBendRatio = std::pow(2.0f, norm * (2.0f / 12.0f));
+            const auto msg = (*mIt).getMessage();
+            if (msg.isNoteOff())
+                handleNoteOff(msg.getNoteNumber(), monoMode, arpActive);
+            else if (msg.isPitchWheel())
+            {
+                const float norm = (static_cast<float>(msg.getPitchWheelValue()) - 8192.0f) / 8192.0f;
+                pitchBendRatio = std::pow(2.0f, norm * (2.0f / 12.0f));
+            }
+            else if (msg.isAllNotesOff() || msg.isAllSoundOff())
+            {
+                heldNotes.clear();
+                for (auto& v : voices) { v.keyDown = false; v.ampEnv.noteOff(); v.filterEnv.noteOff(); }
+            }
         }
-        else if (msg.isAllNotesOff() || msg.isAllSoundOff())
+        for (auto mIt = it; mIt != groupEnd; ++mIt)
         {
-            heldNotes.clear();
-            for (auto& v : voices) { v.ampEnv.noteOff(); v.filterEnv.noteOff(); }
+            const auto msg = (*mIt).getMessage();
+            if (msg.isNoteOn())
+                handleNoteOn(msg.getNoteNumber(), msg.getFloatVelocity(), monoMode, arpActive, glideTime);
         }
-        currentLocal = eventPos;
+
+        it = groupEnd;
     }
 
     if (currentLocal < nSamples)
@@ -596,7 +650,6 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
     const float macroX = (pMacroX->load() - 0.5f) * 2.0f;
     const float macroY = (pMacroY->load() - 0.5f) * 2.0f;
 
-    // 2x Oversampled Parallel Nonlinear Destruction
     const float baseDist = juce::jmap(mAmt, pDistDrive->load(), targetB.distDrive);
     const float effDistDrive = juce::jlimit(0.0f, 1.0f, baseDist + macroX * 0.25f);
     const float distMix = pDistMix->load();
@@ -656,7 +709,6 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // Bitcrusher
     const float baseCrush = juce::jmap(mAmt, pCrushAmount->load(), targetB.crushAmount);
     const float crush = juce::jlimit(0.0f, 1.0f, baseCrush + macroX * 0.18f);
     if (crush > 0.01f)
@@ -676,7 +728,6 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // Spectral Tilt EQ (1000 Hz)
     const float tilt = juce::jlimit(-1.0f, 1.0f, juce::jmap(mAmt, pTiltAmt->load(), targetB.tiltAmt));
     if (std::abs(tilt) > 0.01f)
     {
@@ -691,7 +742,6 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // Sub-Clean Mastering Low Cut (20..250 Hz)
     const float lowCutHz = pLowCutHz->load();
     if (lowCutHz > 22.0f)
     {
@@ -705,7 +755,6 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // Anti-Click BPM-Synced Auto-Pump
     const float pumpAmt = juce::jmap(mAmt, pPumpAmt->load(), targetB.pumpAmt);
     if (pumpAmt > 0.01f)
     {
@@ -723,7 +772,6 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
         pumpPhase = curBeat;
     }
 
-    // Stereo Width on Dry
     const float width = juce::jlimit(0.0f, 1.0f, pStereoWidth->load() + macroY * 0.25f) * 2.0f;
     for (int i = 0; i < nSamples; ++i)
     {
@@ -742,7 +790,6 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
         chorus.process(dryCtx);
     }
 
-    // 2-Pole 180 Hz HPF on Wet FX Bus
     auto* wL = wetFxBuffer.getWritePointer(0);
     auto* wR = wetFxBuffer.getWritePointer(1);
     const float hpAlpha = 1.0f - std::exp(-juce::MathConstants<float>::twoPi * 180.0f / static_cast<float>(currentSampleRate));
@@ -759,7 +806,6 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
         wR[i] = hp1R - fxHpR2;
     }
 
-    // 3-Mode Delay
     const float effDelayMix = juce::jlimit(0.0f, 1.0f, pDelayMix->load() + macroY * 0.22f);
     if (pDelayOn->load() > 0.5f && !delayBufL.empty() && effDelayMix > 0.005f)
     {
@@ -821,7 +867,6 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // 3D Shimmer Halo + Freeze Reverb
     const float baseHalo = juce::jmap(mAmt, pHaloAmt->load(), targetB.haloAmt);
     const float effRevMix = juce::jlimit(0.0f, 1.0f, pReverbMix->load() + macroY * 0.35f);
     const float effHalo = juce::jlimit(0.0f, 1.0f, baseHalo + macroY * 0.25f);
@@ -876,7 +921,6 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // Crystal Air + DC Blocker + Master Limiter + Tape-Stop
     const float air = juce::jlimit(0.0f, 1.0f, juce::jmap(mAmt, pAirAmt->load(), targetB.airAmt) + macroY * 0.22f);
     const float airAlpha = 1.0f - std::exp(-juce::MathConstants<float>::twoPi * 5500.0f / static_cast<float>(currentSampleRate));
     const float dcCoeff = 1.0f - (juce::MathConstants<float>::twoPi * 20.0f / static_cast<float>(currentSampleRate));
@@ -989,7 +1033,6 @@ void WitchSynthAudioProcessor::renderAudioSegment(juce::AudioBuffer<float>& buff
 
     const float osc1Ratio = std::pow(2.0f, static_cast<float>(osc1Oct) + static_cast<float>(osc1Semi) / 12.0f);
     const float osc2Ratio = std::pow(2.0f, static_cast<float>(osc2Oct) + static_cast<float>(osc2Semi) / 12.0f);
-    // Sub is locked cleanly to -1 octave below played MIDI note (never -3 octaves!)
     constexpr float subRatio = 0.5f;
     const float unisonNorm = 1.0f / std::sqrt(static_cast<float>(unison));
 
@@ -1113,7 +1156,6 @@ void WitchSynthAudioProcessor::renderAudioSegment(juce::AudioBuffer<float>& buff
         }
         curArpPos += stepInc;
 
-        // LFO + Lorenz BioChaos
         lfoPhase += lfoRate * invSr;
         if (lfoPhase >= 1.0f) { lfoPhase -= 1.0f; lfoSampleHold = nextNoise(); }
 
@@ -1169,6 +1211,7 @@ void WitchSynthAudioProcessor::renderAudioSegment(juce::AudioBuffer<float>& buff
             if (!v.ampEnv.isActive())
             {
                 v.active = false;
+                v.keyDown = false;
                 continue;
             }
 
@@ -1198,7 +1241,6 @@ void WitchSynthAudioProcessor::renderAudioSegment(juce::AudioBuffer<float>& buff
                 vR += monoS * panRs[static_cast<size_t>(u)];
             }
 
-            // Sub (-1 octave below played MIDI note)
             const float subDt = juce::jlimit(1e-5f, 0.45f, (v.currentFreq * subRatio * voicePitch) * invSr);
             v.subPhase += subDt;
             if (v.subPhase >= 1.0f) v.subPhase -= 1.0f;
@@ -1207,7 +1249,6 @@ void WitchSynthAudioProcessor::renderAudioSegment(juce::AudioBuffer<float>& buff
             const float subDirty = subLvl > 0.5f ? (subLvl - 0.5f) * 2.0f : 0.0f;
             const float subS = (subSine * (1.0f - subDirty * 0.5f) + subSqr * subDirty * 0.5f) * subLvl * 0.65f;
 
-            // Musical Harmonic Ghost Voices (Fifth +7st & Octave +12st, zero dissonant tritone)
             float ghostL = 0.0f, ghostR = 0.0f;
             if (ghostVox > 0.01f)
             {
@@ -1241,7 +1282,7 @@ void WitchSynthAudioProcessor::renderAudioSegment(juce::AudioBuffer<float>& buff
                 vL = v.filter.processSample(0, vL) * 0.85f + v.formant2.processSample(0, vL) * 0.70f;
                 vR = v.filter.processSample(1, vR) * 0.85f + v.formant2.processSample(1, vR) * 0.70f;
             }
-            else if (fType == 4) // 1:1 MIDI-Tracked Comb Resonator
+            else if (fType == 4)
             {
                 const float noteFreq = v.currentFreq * voicePitch;
                 const float cFreq = fKeyTrack >= 0.85f ? noteFreq
