@@ -1,5 +1,6 @@
 #pragma once
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_audio_utils/juce_audio_utils.h>
 #include "PluginProcessor.h"
 #include <functional>
 #include <unordered_map>
@@ -11,6 +12,12 @@ public:
     void drawRotarySlider(juce::Graphics&, int x, int y, int w, int h,
                           float sliderPos, float rotaryStartAngle, float rotaryEndAngle,
                           juce::Slider&) override;
+    void drawToggleButton(juce::Graphics&, juce::ToggleButton&,
+                          bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
+    void drawButtonBackground(juce::Graphics&, juce::Button&, const juce::Colour& backgroundColour,
+                              bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
+    void drawComboBox(juce::Graphics&, int width, int height, bool isButtonDown,
+                      int buttonX, int buttonY, int buttonW, int buttonH, juce::ComboBox&) override;
 };
 
 class WitchXYPad : public juce::Component
@@ -59,6 +66,7 @@ public:
     ~WitchSynthAudioProcessorEditor() override;
 
     void paint(juce::Graphics&) override;
+    void paintOverChildren(juce::Graphics&) override;
     void resized() override;
     void mouseEnter(const juce::MouseEvent&) override;
     void mouseExit(const juce::MouseEvent&) override;
@@ -66,6 +74,7 @@ public:
 private:
     enum class SidePage { Main = 0, Osc, Arp, XY };
 
+    void buildChassisTexture();
     void timerCallback() override;
     void setSidePage(SidePage page);
     void updateVisibility();
@@ -76,25 +85,26 @@ private:
 
     WitchSynthAudioProcessor& audioProcessor;
     WitchLookAndFeel lnf;
+    juce::Image chassisCache;
     WitchXYPad xyPad;
     WitchStepMatrix stepMatrix;
     WitchListModel categoryModel, presetModel;
     juce::ListBox categoryList{ "CatList", &categoryModel };
     juce::ListBox presetList{ "PresetList", &presetModel };
+    juce::MidiKeyboardComponent midiKeyboard;
 
     std::vector<int> visiblePresetIndices;
     int selectedUiCategory = 1;
     SidePage currentPage = SidePage::Main;
+    bool showKeyboard = true;
     int lastSeenPreset = -1;
     float smoothedPeak = 0.0f;
     juce::String activeHelpText;
 
-    // Header & Screen Controls
     juce::TextButton prevBtn{ "<" }, nextBtn{ ">" }, likeBtn{ "LIKE" };
-    juce::TextButton rndBtn{ "RND" }, initBtn{ "INIT" }, lockFxBtn{ "LOCK" }, panicBtn{ "PANIC" };
+    juce::TextButton rndBtn{ "RND" }, initBtn{ "INIT" }, kbdBtn{ "KBD" }, lockFxBtn{ "LOCK" }, panicBtn{ "PANIC" };
     juce::TextButton pageMainBtn{ "MAIN" }, pageOscBtn{ "OSC" }, pageArpBtn{ "ARP" }, pageXyBtn{ "XY" };
 
-    // Side Panels Controls
     juce::ComboBox filterTypeBox, polyModeBox, morphPresetBox;
     juce::Slider filterCutoff, filterReso, filterDrive, filterEnvAmt, filterDecay, filterKeyTrack, tiltAmt, stereoWidth;
     juce::Slider ampA, ampD, ampS, ampR, glideTime, snapAmt, airAmt, morphAmt;
@@ -106,7 +116,6 @@ private:
     juce::ComboBox lfoTargetBox, lfoShapeBox, arpModeBox;
     juce::Slider lfoRate, lfoDepth, arpRate, pitchPunch, pumpAmt, noiseLevel, vhsDrift;
 
-    // Bottom Separated FX Controls (always visible)
     juce::ToggleButton distBtn{ "DIST" }, chorusBtn{ "CHORUS" }, delayBtn{ "DELAY" }, reverbBtn{ "REVERB" }, freezeBtn{ "FREEZE" }, tapeStopBtn{ "T.STOP" };
     juce::ComboBox distModeBox, delayModeBox;
     juce::Slider distDrive, distMix, crushAmount, lowCutHz;
