@@ -103,6 +103,10 @@ private:
     std::set<int> favoritePresets;
     uint64_t noteCounter = 0;
 
+    // Maps raw incoming MIDI note -> generated scale/chord notes (guarantees 0 stuck notes!)
+    std::array<std::array<int, 3>, 128> activeChordNotes{};
+    std::array<int, 128> activeChordCount{};
+
     float lfoPhase = 0.0f;
     float lfoSampleHold = 0.0f;
     double lorenzX = 0.1, lorenzY = 0.0, lorenzZ = 0.0;
@@ -125,7 +129,7 @@ private:
     std::atomic<bool> resetFxFlag{ false };
     std::atomic<bool> panicFlag{ false };
 
-    juce::SmoothedValue<float> smoothedCutoff, smoothedMaster, smoothedDelaySamples, smoothedMorphAmt;
+    juce::SmoothedValue<float> smoothedCutoff, smoothedMaster, smoothedDelaySamples, smoothedMorphAmt, smoothedNoiseGain;
 
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
     juce::dsp::Chorus<float> chorus;
@@ -156,6 +160,9 @@ private:
     float crushHoldL = 0.0f, crushHoldR = 0.0f;
     int crushCounter = 0;
 
+    static int quantizeNoteToScale(int midiNote, int scaleMode);
+    void dispatchRawNoteOn(int rawNote, float velocity, bool monoMode, bool arpActive, float glideTime);
+    void dispatchRawNoteOff(int rawNote, bool monoMode, bool arpActive);
     void processSubBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi, int offset, int numSamples);
     void handleNoteOn(int note, float velocity, bool monoMode, bool arpActive, float glideTime);
     void handleNoteOff(int note, bool monoMode, bool arpActive);
@@ -166,14 +173,14 @@ private:
     static float generateOsc(int waveType, float phase, float dt, float pw);
     float nextNoise();
 
-    std::atomic<float> *pOsc1Wave, *pOsc1Oct, *pOsc1Semi, *pOsc1Detune, *pOsc1Level, *pPwmWidth, *pXModAmt;
+    std::atomic<float> *pOsc1Wave, *pOsc1Oct, *pOsc1Detune, *pOsc1Level, *pPwmWidth, *pXModAmt;
     std::atomic<float> *pOsc2Wave, *pOsc2Oct, *pOsc2Semi, *pOsc2Unison, *pOsc2Level;
-    std::atomic<float> *pSubLevel, *pEntropyAmt, *pGravityAmt, *pGhostVoxAmt;
-    std::atomic<float> *pNoiseLevel, *pVhsDrift, *pCrushAmount, *pTiltAmt, *pLowCutHz;
-    std::atomic<float> *pFilterType, *pFilterCutoff, *pFilterReso, *pFilterDrive, *pFilterEnvAmt, *pFilterDecay, *pFilterKeyTrack, *pPitchPunch;
+    std::atomic<float> *pSubLevel, *pGravityAmt, *pGhostVoxAmt;
+    std::atomic<float> *pNoiseOn, *pNoiseLevel, *pVhsDrift, *pCrushAmount, *pTiltAmt, *pLowCutHz;
+    std::atomic<float> *pFilterType, *pFilterCutoff, *pFilterReso, *pFilterEnvAmt, *pFilterDecay, *pPitchPunch;
     std::atomic<float> *pAmpA, *pAmpD, *pAmpS, *pAmpR, *pSnapAmt, *pAirAmt;
     std::atomic<float> *pLfoRate, *pLfoDepth, *pLfoTarget, *pLfoShape;
-    std::atomic<float> *pPolyMode, *pArpMode, *pArpRate, *pGlideTime, *pStereoWidth, *pPumpAmt;
+    std::atomic<float> *pPolyMode, *pScaleLock, *pChordMode, *pArpMode, *pArpRate, *pGlideTime, *pStereoWidth, *pPumpAmt;
     std::array<std::atomic<float>*, 8> pSeq{};
     std::atomic<float> *pDistOn, *pDistMode, *pDistDrive, *pDistMix;
     std::atomic<float> *pChorusOn, *pChorusMix, *pChorusRate, *pChorusDepth;
