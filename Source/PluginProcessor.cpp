@@ -192,6 +192,7 @@ void WitchSynthAudioProcessor::prepareToPlay(double sampleRate, int)
     currentSampleRate = sampleRate > 0.0 ? sampleRate : 44100.0;
     juce::dsp::ProcessSpec spec{ currentSampleRate, static_cast<juce::uint32>(maxSubBlockSize), 2 };
 
+    keyboardState.reset();
     heldNotes.clear();
     for (auto& v : voices)
     {
@@ -424,7 +425,6 @@ void WitchSynthAudioProcessor::handleNoteOn(int note, float velocity, bool monoM
         return;
     }
 
-    // Poly mode: 1) free voice, 2) oldest released voice, 3) oldest active voice
     int targetIdx = -1;
     for (int i = 0; i < numVoices; ++i)
         if (!voices[i].active) { targetIdx = i; break; }
@@ -509,7 +509,6 @@ void WitchSynthAudioProcessor::handleNoteOff(int note, bool monoMode, bool arpAc
         return;
     }
 
-    // Release ONLY the oldest held voice with matching note (protects newly triggered back-to-back notes!)
     int oldestMatch = -1;
     uint64_t minAge = UINT64_MAX;
     for (int i = 0; i < numVoices; ++i)
@@ -537,6 +536,8 @@ void WitchSynthAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
 
     const int totalSamples = buffer.getNumSamples();
     if (totalSamples <= 0) return;
+
+    keyboardState.processNextMidiBuffer(midiMessages, 0, totalSamples, true);
 
     for (int offset = 0; offset < totalSamples; offset += maxSubBlockSize)
     {
@@ -590,7 +591,6 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
     const bool arpActive = arpMode >= 2;
     const float glideTime = pGlideTime->load();
 
-    // Sample-accurate MIDI dispatch: at any identical samplePosition, process NoteOffs BEFORE NoteOns!
     auto it = midiMessages.cbegin();
     const auto endIt = midiMessages.cend();
     while (it != endIt && (*it).samplePosition < offset) ++it;
