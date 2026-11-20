@@ -12,6 +12,7 @@ WitchSynthAudioProcessor::WitchSynthAudioProcessor()
 
     pOsc1Wave    = apvts.getRawParameterValue("osc1Wave");
     pOsc1Oct     = apvts.getRawParameterValue("osc1Oct");
+    pOsc1Semi    = apvts.getRawParameterValue("osc1Semi");
     pOsc1Detune  = apvts.getRawParameterValue("osc1Detune");
     pOsc1Level   = apvts.getRawParameterValue("osc1Level");
     pPwmWidth    = apvts.getRawParameterValue("pwmWidth");
@@ -22,9 +23,9 @@ WitchSynthAudioProcessor::WitchSynthAudioProcessor()
     pOsc2Unison  = apvts.getRawParameterValue("osc2Unison");
     pOsc2Level   = apvts.getRawParameterValue("osc2Level");
     pSubLevel    = apvts.getRawParameterValue("subLevel");
+    pEntropyAmt  = apvts.getRawParameterValue("entropyAmt");
     pGravityAmt  = apvts.getRawParameterValue("gravityAmt");
     pGhostVoxAmt = apvts.getRawParameterValue("ghostVoxAmt");
-    pNoiseOn     = apvts.getRawParameterValue("noiseOn");
     pNoiseLevel  = apvts.getRawParameterValue("noiseLevel");
     pVhsDrift    = apvts.getRawParameterValue("vhsDrift");
     pCrushAmount = apvts.getRawParameterValue("crushAmount");
@@ -33,8 +34,10 @@ WitchSynthAudioProcessor::WitchSynthAudioProcessor()
     pFilterType  = apvts.getRawParameterValue("filterType");
     pFilterCutoff= apvts.getRawParameterValue("filterCutoff");
     pFilterReso  = apvts.getRawParameterValue("filterReso");
+    pFilterDrive = apvts.getRawParameterValue("filterDrive");
     pFilterEnvAmt= apvts.getRawParameterValue("filterEnvAmt");
     pFilterDecay = apvts.getRawParameterValue("filterDecay");
+    pFilterKeyTrack = apvts.getRawParameterValue("filterKeyTrack");
     pPitchPunch  = apvts.getRawParameterValue("pitchPunch");
     pAmpA        = apvts.getRawParameterValue("ampAttack");
     pAmpD        = apvts.getRawParameterValue("ampDecay");
@@ -47,8 +50,6 @@ WitchSynthAudioProcessor::WitchSynthAudioProcessor()
     pLfoTarget   = apvts.getRawParameterValue("lfoTarget");
     pLfoShape    = apvts.getRawParameterValue("lfoShape");
     pPolyMode    = apvts.getRawParameterValue("polyMode");
-    pScaleLock   = apvts.getRawParameterValue("scaleLock");
-    pChordMode   = apvts.getRawParameterValue("chordMode");
     pArpMode     = apvts.getRawParameterValue("arpMode");
     pArpRate     = apvts.getRawParameterValue("arpRate");
     pGlideTime   = apvts.getRawParameterValue("glideTime");
@@ -83,8 +84,8 @@ WitchSynthAudioProcessor::WitchSynthAudioProcessor()
 
     for (size_t i = 0; i < voices.size(); ++i)
     {
-        voices[i].entropyPitch = (static_cast<float>(i) - 3.5f) * 0.0015f;
-        voices[i].entropyCutoff = (static_cast<float>((i * 3) % 7) - 3.0f) * 0.04f;
+        voices[i].entropyPitch = (static_cast<float>(i) - 3.5f) * 0.0018f;
+        voices[i].entropyCutoff = (static_cast<float>((i * 3) % 7) - 3.0f) * 0.05f;
     }
 
     loadFavorites();
@@ -99,6 +100,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout WitchSynthAudioProcessor::cr
 
     p.push_back(std::make_unique<juce::AudioParameterChoice>(pid("osc1Wave"), "OSC1 Wave", waves, 1));
     p.push_back(std::make_unique<juce::AudioParameterInt>(pid("osc1Oct"), "OSC1 Oct", -2, 2, 0));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(pid("osc1Semi"), "OSC1 Semi", -12, 12, 0));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("osc1Detune"), "Detune", 0.0f, 1.0f, 0.20f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("osc1Level"), "OSC1 Level", 0.0f, 1.0f, 0.90f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("pwmWidth"), "Morph/PWM", 0.08f, 0.92f, 0.28f));
@@ -111,11 +113,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout WitchSynthAudioProcessor::cr
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("osc2Level"), "OSC2 Level", 0.0f, 1.0f, 0.65f));
 
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("subLevel"), "Sub/Trans", 0.0f, 1.0f, 0.30f));
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("entropyAmt"), "Entropy", 0.0f, 1.0f, 0.15f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("gravityAmt"), "Gravity", 0.0f, 1.0f, 0.05f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("ghostVoxAmt"), "Ghost Vox", 0.0f, 1.0f, 0.0f));
-
-    p.push_back(std::make_unique<juce::AudioParameterBool>(pid("noiseOn"), "Noise On", false));
-    p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("noiseLevel"), "Noise", 0.0f, 1.0f, 0.15f));
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("noiseLevel"), "Noise", 0.0f, 1.0f, 0.02f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("vhsDrift"), "VHS Drift", 0.0f, 1.0f, 0.12f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("crushAmount"), "Crush", 0.0f, 1.0f, 0.10f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("tiltAmt"), "Tilt", -1.0f, 1.0f, 0.10f));
@@ -125,8 +126,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout WitchSynthAudioProcessor::cr
         juce::StringArray{ "LowPass", "HighPass", "BandPass", "Formant", "Comb", "DualAcid" }, 0));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("filterCutoff"), "Cutoff", juce::NormalisableRange<float>(20.0f, 20000.0f, 0.1f, 0.25f), 6400.0f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("filterReso"), "Resonance", juce::NormalisableRange<float>(0.5f, 12.0f, 0.01f, 0.5f), 2.0f));
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("filterDrive"), "Filter Drive", 0.0f, 1.0f, 0.35f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("filterEnvAmt"), "Filter Env", -1.0f, 1.0f, 0.25f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("filterDecay"), "Filter Decay", juce::NormalisableRange<float>(0.01f, 4.0f, 0.001f, 0.35f), 0.35f));
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("filterKeyTrack"), "Keytrack", 0.0f, 1.0f, 0.60f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("pitchPunch"), "Pitch Punch", 0.0f, 1.0f, 0.10f));
 
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("ampAttack"), "Attack", juce::NormalisableRange<float>(0.001f, 4.0f, 0.001f, 0.35f), 0.002f));
@@ -142,8 +145,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout WitchSynthAudioProcessor::cr
     p.push_back(std::make_unique<juce::AudioParameterChoice>(pid("lfoShape"), "LFO Shape", juce::StringArray{ "Sine", "Square", "Ramp", "S&H", "BioChaos" }, 0));
 
     p.push_back(std::make_unique<juce::AudioParameterChoice>(pid("polyMode"), "Voicing", juce::StringArray{ "Poly", "Mono" }, 0));
-    p.push_back(std::make_unique<juce::AudioParameterChoice>(pid("scaleLock"), "Scale Lock", juce::StringArray{ "Scale: Off", "Witch Min", "Phrygian", "Pentatonic" }, 0));
-    p.push_back(std::make_unique<juce::AudioParameterChoice>(pid("chordMode"), "Chord Mode", juce::StringArray{ "1-Note", "Octave", "Power +7", "Dark Minor" }, 0));
     p.push_back(std::make_unique<juce::AudioParameterChoice>(pid("arpMode"), "Arp/Chop", juce::StringArray{ "Off", "Stutter", "ChipArp", "Chaos" }, 0));
     p.push_back(std::make_unique<juce::AudioParameterChoice>(pid("arpRate"), "Arp Rate", juce::StringArray{ "1/4", "1/8", "1/8T", "1/16", "1/16T", "1/32" }, 3));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(pid("glideTime"), "Glide", juce::NormalisableRange<float>(0.0f, 0.8f, 0.001f, 0.4f), 0.03f));
@@ -193,7 +194,6 @@ void WitchSynthAudioProcessor::prepareToPlay(double sampleRate, int)
 
     keyboardState.reset();
     heldNotes.clear();
-    activeChordCount.fill(0);
     for (auto& v : voices)
     {
         v.active = false;
@@ -220,12 +220,10 @@ void WitchSynthAudioProcessor::prepareToPlay(double sampleRate, int)
     smoothedMaster.reset(currentSampleRate, 0.012);
     smoothedDelaySamples.reset(currentSampleRate, 0.06);
     smoothedMorphAmt.reset(currentSampleRate, 0.02);
-    smoothedNoiseGain.reset(currentSampleRate, 0.015);
     smoothedCutoff.setCurrentAndTargetValue(pFilterCutoff->load());
     smoothedMaster.setCurrentAndTargetValue(pMasterGain->load());
     smoothedDelaySamples.setCurrentAndTargetValue(pDelayTime->load() * static_cast<float>(currentSampleRate));
     smoothedMorphAmt.setCurrentAndTargetValue(pMorphAmt->load());
-    smoothedNoiseGain.setCurrentAndTargetValue(pNoiseOn->load() > 0.5f ? pNoiseLevel->load() : 0.0f);
 
     wetFxBuffer.setSize(2, maxSubBlockSize);
     wetFxBuffer.clear();
@@ -353,68 +351,6 @@ float WitchSynthAudioProcessor::nextNoise()
     rngState ^= rngState >> 17;
     rngState ^= rngState << 5;
     return static_cast<float>(static_cast<int32_t>(rngState)) * (1.0f / 2147483648.0f);
-}
-
-int WitchSynthAudioProcessor::quantizeNoteToScale(int midiNote, int scaleMode)
-{
-    if (scaleMode <= 0) return juce::jlimit(0, 127, midiNote);
-    static constexpr int minorLut[12]   = { 0, 0, 2, 2, 3, 5, 5, 7, 7, 8, 8, 10 };
-    static constexpr int phrygianLut[12]= { 0, 1, 1, 3, 3, 5, 5, 7, 8, 8, 10, 10 };
-    static constexpr int pentaLut[12]   = { 0, 0, 3, 3, 3, 5, 5, 7, 7, 10, 10, 10 };
-    const int oct = midiNote / 12;
-    const int pc = midiNote % 12;
-    const int snapped = (scaleMode == 1) ? minorLut[pc] : (scaleMode == 2 ? phrygianLut[pc] : pentaLut[pc]);
-    return juce::jlimit(0, 127, oct * 12 + snapped);
-}
-
-void WitchSynthAudioProcessor::dispatchRawNoteOn(int rawNote, float velocity, bool monoMode, bool arpActive, float glideTime)
-{
-    const int r = juce::jlimit(0, 127, rawNote);
-    if (activeChordCount[static_cast<size_t>(r)] > 0)
-        dispatchRawNoteOff(r, monoMode, arpActive);
-
-    const int scaleMode = static_cast<int>(pScaleLock->load());
-    const int chordMode = static_cast<int>(pChordMode->load());
-    const bool effMono = monoMode && (chordMode == 0);
-
-    const int root = quantizeNoteToScale(r, scaleMode);
-    int cnt = 1;
-    activeChordNotes[static_cast<size_t>(r)][0] = root;
-
-    if (chordMode == 1) // Octave
-    {
-        if (root + 12 <= 127) activeChordNotes[static_cast<size_t>(r)][cnt++] = root + 12;
-    }
-    else if (chordMode == 2) // Power +7, +12
-    {
-        if (root + 7 <= 127) activeChordNotes[static_cast<size_t>(r)][cnt++] = root + 7;
-        if (root + 12 <= 127) activeChordNotes[static_cast<size_t>(r)][cnt++] = root + 12;
-    }
-    else if (chordMode == 3) // Dark Minor (+3, +7)
-    {
-        const int third = quantizeNoteToScale(juce::jmin(127, root + 3), scaleMode > 0 ? scaleMode : 1);
-        if (third != root) activeChordNotes[static_cast<size_t>(r)][cnt++] = third;
-        if (root + 7 <= 127) activeChordNotes[static_cast<size_t>(r)][cnt++] = root + 7;
-    }
-
-    activeChordCount[static_cast<size_t>(r)] = cnt;
-    for (int i = 0; i < cnt; ++i)
-        handleNoteOn(activeChordNotes[static_cast<size_t>(r)][static_cast<size_t>(i)], velocity, effMono, arpActive, glideTime);
-}
-
-void WitchSynthAudioProcessor::dispatchRawNoteOff(int rawNote, bool monoMode, bool arpActive)
-{
-    const int r = juce::jlimit(0, 127, rawNote);
-    const int cnt = activeChordCount[static_cast<size_t>(r)];
-    if (cnt <= 0)
-    {
-        handleNoteOff(r, monoMode, arpActive);
-        return;
-    }
-    const bool effMono = monoMode && (cnt == 1);
-    for (int i = 0; i < cnt; ++i)
-        handleNoteOff(activeChordNotes[static_cast<size_t>(r)][static_cast<size_t>(i)], effMono, arpActive);
-    activeChordCount[static_cast<size_t>(r)] = 0;
 }
 
 void WitchSynthAudioProcessor::handleNoteOn(int note, float velocity, bool monoMode, bool arpActive, float glideTime)
@@ -615,7 +551,6 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
     if (panicFlag.exchange(false))
     {
         heldNotes.clear();
-        activeChordCount.fill(0);
         for (auto& v : voices) { v.active = false; v.keyDown = false; v.ampEnv.reset(); v.filterEnv.reset(); v.combBufL.fill(0.0f); v.combBufR.fill(0.0f); }
         resetFxFlag.store(true);
         if (auto* frz = apvts.getParameter("reverbFreeze")) frz->setValueNotifyingHost(0.0f);
@@ -624,7 +559,6 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
 
     if (resetFxFlag.exchange(false))
     {
-        for (auto& v : voices) { v.combBufL.fill(0.0f); v.combBufR.fill(0.0f); v.combLpL = v.combLpR = v.combHpL = v.combHpR = 0.0f; }
         std::fill(delayBufL.begin(), delayBufL.end(), 0.0f);
         std::fill(delayBufR.begin(), delayBufR.end(), 0.0f);
         ghostBufL.fill(0.0f); ghostBufR.fill(0.0f);
@@ -680,7 +614,7 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
         {
             const auto msg = (*mIt).getMessage();
             if (msg.isNoteOff())
-                dispatchRawNoteOff(msg.getNoteNumber(), monoMode, arpActive);
+                handleNoteOff(msg.getNoteNumber(), monoMode, arpActive);
             else if (msg.isPitchWheel())
             {
                 const float norm = (static_cast<float>(msg.getPitchWheelValue()) - 8192.0f) / 8192.0f;
@@ -689,7 +623,6 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
             else if (msg.isAllNotesOff() || msg.isAllSoundOff())
             {
                 heldNotes.clear();
-                activeChordCount.fill(0);
                 for (auto& v : voices) { v.keyDown = false; v.ampEnv.noteOff(); v.filterEnv.noteOff(); }
             }
         }
@@ -697,7 +630,7 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
         {
             const auto msg = (*mIt).getMessage();
             if (msg.isNoteOn())
-                dispatchRawNoteOn(msg.getNoteNumber(), msg.getFloatVelocity(), monoMode, arpActive, glideTime);
+                handleNoteOn(msg.getNoteNumber(), msg.getFloatVelocity(), monoMode, arpActive, glideTime);
         }
 
         it = groupEnd;
@@ -880,7 +813,6 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
         const int dMode = static_cast<int>(pDelayMode->load());
         smoothedDelaySamples.setTargetValue(pDelayTime->load() * static_cast<float>(currentSampleRate));
         const float fb = pDelayFb->load();
-        const float lpAlpha = (dMode == 2) ? 0.20f : 0.28f;
         constexpr int gW = ghostDelaySize / 2;
         constexpr float gInc = 1.0f / static_cast<float>(gW);
 
@@ -895,8 +827,8 @@ void WitchSynthAudioProcessor::processSubBlock(juce::AudioBuffer<float>& buffer,
             const float dL = delayBufL[static_cast<size_t>(p0)] * (1.0f - frac) + delayBufL[static_cast<size_t>(p1)] * frac;
             const float dR = delayBufR[static_cast<size_t>(p0)] * (1.0f - frac) + delayBufR[static_cast<size_t>(p1)] * frac;
 
-            delayFilterL += lpAlpha * (dL - delayFilterL);
-            delayFilterR += lpAlpha * (dR - delayFilterR);
+            delayFilterL += 0.28f * (dL - delayFilterL);
+            delayFilterR += 0.28f * (dR - delayFilterR);
 
             float fbL = std::tanh(delayFilterL * fb);
             float fbR = std::tanh(delayFilterR * fb);
@@ -1041,6 +973,7 @@ void WitchSynthAudioProcessor::renderAudioSegment(juce::AudioBuffer<float>& buff
 
     const int osc1Wave = static_cast<int>(pOsc1Wave->load());
     const int osc1Oct = static_cast<int>(pOsc1Oct->load());
+    const int osc1Semi = static_cast<int>(pOsc1Semi->load());
     const float detune = juce::jmap(mAmt, pOsc1Detune->load(), targetB.osc1Detune);
     const float osc1Lvl = pOsc1Level->load();
     const float basePw = juce::jlimit(0.08f, 0.92f, juce::jmap(mAmt, pPwmWidth->load(), targetB.pwmWidth) + macroX * 0.16f);
@@ -1053,11 +986,10 @@ void WitchSynthAudioProcessor::renderAudioSegment(juce::AudioBuffer<float>& buff
     const float osc2Lvl = pOsc2Level->load();
 
     const float subLvl = juce::jmap(mAmt, pSubLevel->load(), targetB.subLevel);
-    constexpr float entropy = 0.20f;
+    const float entropy = juce::jmap(mAmt, pEntropyAmt->load(), targetB.entropyAmt);
     const float gravity = juce::jmap(mAmt, pGravityAmt->load(), targetB.gravityAmt);
     const float ghostVox = juce::jmap(mAmt, pGhostVoxAmt->load(), targetB.ghostVoxAmt);
-    const bool noiseEnabled = pNoiseOn->load() > 0.5f;
-    smoothedNoiseGain.setTargetValue(noiseEnabled ? juce::jmap(mAmt, pNoiseLevel->load(), targetB.noiseLevel) : 0.0f);
+    const float noiseLvl = juce::jmap(mAmt, pNoiseLevel->load(), targetB.noiseLevel);
     const float vhsDrift = juce::jmap(mAmt, pVhsDrift->load(), targetB.vhsDrift);
 
     const int fType = static_cast<int>(pFilterType->load());
@@ -1065,12 +997,11 @@ void WitchSynthAudioProcessor::renderAudioSegment(juce::AudioBuffer<float>& buff
     const float morphedCut = baseCut * std::pow(juce::jmax(20.0f, targetB.filterCutoff) / juce::jmax(20.0f, baseCut), mAmt);
     smoothedCutoff.setTargetValue(morphedCut * std::pow(2.0f, macroX * 1.8f));
     const float fReso = juce::jlimit(0.5f, 12.0f, juce::jmap(mAmt, pFilterReso->load(), targetB.filterReso));
-    constexpr float fDrive = 1.6f;
+    const float fDrive = 1.0f + juce::jmap(mAmt, pFilterDrive->load(), targetB.filterDrive) * 5.0f;
     const float fEnvAmt = juce::jmap(mAmt, pFilterEnvAmt->load(), targetB.filterEnvAmt);
-    const float fKeyTrack = (fType == 4) ? 1.0f : 0.60f;
+    const float fKeyTrack = pFilterKeyTrack->load();
     const float pPunch = pPitchPunch->load();
     const float snapAmt = pSnapAmt->load();
-    const float resoComp = (fType == 4) ? 1.0f : (1.0f / (1.0f + juce::jmax(0.0f, fReso - 2.0f) * 0.14f));
 
     const juce::ADSR::Parameters ampParams{ pAmpA->load(), pAmpD->load(), pAmpS->load(), pAmpR->load() };
     const juce::ADSR::Parameters fEnvParams{ pAmpA->load() * 0.35f + 0.001f, pFilterDecay->load(), pAmpS->load() > 0.5f ? 0.2f : 0.0f, pAmpR->load() };
@@ -1100,7 +1031,7 @@ void WitchSynthAudioProcessor::renderAudioSegment(juce::AudioBuffer<float>& buff
     const float stealInc = 1.0f / (0.0015f * srF);
     const float combHpAlpha = 1.0f - std::exp(-juce::MathConstants<float>::twoPi * 60.0f / srF);
 
-    const float osc1Ratio = std::pow(2.0f, static_cast<float>(osc1Oct));
+    const float osc1Ratio = std::pow(2.0f, static_cast<float>(osc1Oct) + static_cast<float>(osc1Semi) / 12.0f);
     const float osc2Ratio = std::pow(2.0f, static_cast<float>(osc2Oct) + static_cast<float>(osc2Semi) / 12.0f);
     constexpr float subRatio = 0.5f;
     const float unisonNorm = 1.0f / std::sqrt(static_cast<float>(unison));
@@ -1262,9 +1193,8 @@ void WitchSynthAudioProcessor::renderAudioSegment(juce::AudioBuffer<float>& buff
 
         const float pwMod = juce::jlimit(0.06f, 0.94f, basePw + (lfoTarget == 2 ? lfoVal * lfoDepth * 0.36f : 0.0f));
         const float curCutoff = smoothedCutoff.getNextValue();
-        const float curNoiseLvl = smoothedNoiseGain.getNextValue();
-        const float noiseSample = (curNoiseLvl > 0.0002f) ? (rawNoise * curNoiseLvl * 0.25f) : 0.0f;
         float sumL = 0.0f, sumR = 0.0f;
+        const float noiseSample = rawNoise * noiseLvl * 0.25f;
 
         for (auto& v : voices)
         {
@@ -1349,13 +1279,15 @@ void WitchSynthAudioProcessor::renderAudioSegment(juce::AudioBuffer<float>& buff
                 const float f2 = f2Table[idx0] * (1.0f - frac) + f2Table[idx0 + 1] * frac;
                 v.filter.setCutoffFrequency(juce::jlimit(20.0f, maxCutoff, f1));
                 v.formant2.setCutoffFrequency(juce::jlimit(20.0f, maxCutoff, f2));
-                vL = (v.filter.processSample(0, vL) * 0.85f + v.formant2.processSample(0, vL) * 0.70f) * resoComp;
-                vR = (v.filter.processSample(1, vR) * 0.85f + v.formant2.processSample(1, vR) * 0.70f) * resoComp;
+                vL = v.filter.processSample(0, vL) * 0.85f + v.formant2.processSample(0, vL) * 0.70f;
+                vR = v.filter.processSample(1, vR) * 0.85f + v.formant2.processSample(1, vR) * 0.70f;
             }
             else if (fType == 4)
             {
                 const float noteFreq = v.currentFreq * voicePitch;
-                const float dSamps = juce::jlimit(2.0f, static_cast<float>(Voice::combSize - 2), srF / juce::jmax(25.0f, noteFreq));
+                const float cFreq = fKeyTrack >= 0.85f ? noteFreq
+                                  : juce::jmap(fKeyTrack / 0.85f, juce::jlimit(30.0f, 3500.0f, cutoff), noteFreq);
+                const float dSamps = juce::jlimit(2.0f, static_cast<float>(Voice::combSize - 2), srF / juce::jmax(25.0f, cFreq));
                 const int dInt = static_cast<int>(dSamps);
                 const float frac = dSamps - static_cast<float>(dInt);
                 const int r0 = (v.combPos - dInt + Voice::combSize) % Voice::combSize;
@@ -1381,14 +1313,14 @@ void WitchSynthAudioProcessor::renderAudioSegment(juce::AudioBuffer<float>& buff
             {
                 v.filter.setCutoffFrequency(cutoff);
                 v.formant2.setCutoffFrequency(cutoff);
-                vL = v.formant2.processSample(0, std::tanh(v.filter.processSample(0, vL) * 1.45f)) * resoComp;
-                vR = v.formant2.processSample(1, std::tanh(v.filter.processSample(1, vR) * 1.45f)) * resoComp;
+                vL = v.formant2.processSample(0, std::tanh(v.filter.processSample(0, vL) * 1.45f));
+                vR = v.formant2.processSample(1, std::tanh(v.filter.processSample(1, vR) * 1.45f));
             }
             else
             {
                 v.filter.setCutoffFrequency(cutoff);
-                vL = v.filter.processSample(0, vL) * resoComp;
-                vR = v.filter.processSample(1, vR) * resoComp;
+                vL = v.filter.processSample(0, vL);
+                vR = v.filter.processSample(1, vR);
             }
 
             const float snapBoost = 1.0f + snapAmt * v.snapEnvVal * 1.25f;
@@ -1425,18 +1357,18 @@ void WitchSynthAudioProcessor::initPatch()
             param->setValueNotifyingHost(param->convertTo0to1(val));
     };
 
-    setP("osc1Wave", 0.0f); setP("osc1Oct", 0.0f);
+    setP("osc1Wave", 0.0f); setP("osc1Oct", 0.0f); setP("osc1Semi", 0.0f);
     setP("osc1Detune", 0.25f); setP("osc1Level", 0.85f); setP("pwmWidth", 0.50f); setP("xModAmt", 0.0f);
     setP("osc2Wave", 0.0f); setP("osc2Oct", -1.0f); setP("osc2Semi", 0.0f);
     setP("osc2Unison", 3.0f); setP("osc2Level", 0.55f);
-    setP("subLevel", 0.35f); setP("gravityAmt", 0.0f); setP("ghostVoxAmt", 0.0f);
-    setP("noiseOn", 0.0f); setP("noiseLevel", 0.15f); setP("vhsDrift", 0.05f); setP("crushAmount", 0.0f); setP("tiltAmt", 0.0f); setP("lowCutHz", 22.0f);
+    setP("subLevel", 0.35f); setP("entropyAmt", 0.10f); setP("gravityAmt", 0.0f); setP("ghostVoxAmt", 0.0f);
+    setP("noiseLevel", 0.0f); setP("vhsDrift", 0.05f); setP("crushAmount", 0.0f); setP("tiltAmt", 0.0f); setP("lowCutHz", 22.0f);
     setP("filterType", 0.0f); setP("filterCutoff", 12000.0f); setP("filterReso", 1.2f);
-    setP("filterEnvAmt", 0.15f); setP("filterDecay", 0.35f); setP("pitchPunch", 0.0f);
+    setP("filterDrive", 0.15f); setP("filterEnvAmt", 0.15f); setP("filterDecay", 0.35f); setP("filterKeyTrack", 0.6f); setP("pitchPunch", 0.0f);
     setP("ampAttack", 0.005f); setP("ampDecay", 0.35f); setP("ampSustain", 0.85f); setP("ampRelease", 0.25f);
     setP("snapAmt", 0.0f); setP("airAmt", 0.20f);
     setP("lfoRate", 1.5f); setP("lfoDepth", 0.0f); setP("lfoTarget", 0.0f); setP("lfoShape", 0.0f);
-    setP("polyMode", 0.0f); setP("scaleLock", 0.0f); setP("chordMode", 0.0f); setP("arpMode", 0.0f); setP("arpRate", 3.0f);
+    setP("polyMode", 0.0f); setP("arpMode", 0.0f); setP("arpRate", 3.0f);
     setP("glideTime", 0.02f); setP("stereoWidth", 0.55f); setP("pumpAmt", 0.0f);
     for (int s = 0; s < 8; ++s) setP(("seq" + juce::String(s)).toRawUTF8(), 1.0f);
     setP("distOn", 0.0f); setP("distMode", 0.0f); setP("distDrive", 0.25f); setP("distMix", 0.85f);
@@ -1463,6 +1395,7 @@ void WitchSynthAudioProcessor::loadPreset(int index)
 
     setP("osc1Wave", static_cast<float>(p.osc1Wave));
     setP("osc1Oct", static_cast<float>(p.osc1Oct));
+    setP("osc1Semi", static_cast<float>(p.osc1Semi));
     setP("osc1Detune", p.osc1Detune);
     setP("osc1Level", p.osc1Level);
     setP("pwmWidth", p.pwmWidth);
@@ -1473,9 +1406,9 @@ void WitchSynthAudioProcessor::loadPreset(int index)
     setP("osc2Unison", static_cast<float>(p.osc2Unison));
     setP("osc2Level", p.osc2Level);
     setP("subLevel", p.subLevel);
+    setP("entropyAmt", p.entropyAmt);
     setP("gravityAmt", p.gravityAmt);
     setP("ghostVoxAmt", p.ghostVoxAmt);
-    setP("noiseOn", p.noiseLevel > 0.06f ? 1.0f : 0.0f);
     setP("noiseLevel", p.noiseLevel);
     setP("vhsDrift", p.vhsDrift);
     setP("crushAmount", p.crushAmount);
@@ -1484,8 +1417,10 @@ void WitchSynthAudioProcessor::loadPreset(int index)
     setP("filterType", static_cast<float>(p.filterType));
     setP("filterCutoff", p.filterCutoff);
     setP("filterReso", p.filterReso);
+    setP("filterDrive", p.filterDrive);
     setP("filterEnvAmt", p.filterEnvAmt);
     setP("filterDecay", p.filterDecay);
+    setP("filterKeyTrack", p.filterKeyTrack);
     setP("pitchPunch", p.pitchPunch);
     setP("ampAttack", p.ampA);
     setP("ampDecay", p.ampD);
