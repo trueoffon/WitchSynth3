@@ -1,5 +1,6 @@
 #pragma once
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_dsp/juce_dsp.h>
 #include "Presets.h"
 #include <array>
@@ -54,6 +55,7 @@ public:
     std::atomic<int> scopeWritePos{ 0 };
     std::atomic<float> peakLevel{ 0.0f };
 
+    juce::MidiKeyboardState keyboardState;
     juce::AudioProcessorValueTreeState apvts;
 
 private:
