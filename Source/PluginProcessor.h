@@ -103,7 +103,6 @@ private:
     std::set<int> favoritePresets;
     uint64_t noteCounter = 0;
 
-    // Maps raw incoming MIDI note -> generated scale/chord notes (guarantees 0 stuck notes!)
     std::array<std::array<int, 3>, 128> activeChordNotes{};
     std::array<int, 128> activeChordCount{};
 
