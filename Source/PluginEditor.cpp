@@ -16,6 +16,14 @@ namespace Colors
 
 static juce::String u8(const char* s) { return juce::String::fromUTF8(s); }
 
+static void disableFocusRecursive(juce::Component& comp)
+{
+    comp.setWantsKeyboardFocus(false);
+    comp.setMouseClickGrabsKeyboardFocus(false);
+    for (auto* child : comp.getChildren())
+        disableFocusRecursive(*child);
+}
+
 WitchLookAndFeel::WitchLookAndFeel()
 {
     setColour(juce::ComboBox::backgroundColourId, juce::Colour(0xff1a142b));
@@ -194,7 +202,6 @@ WitchSynthAudioProcessorEditor::WitchSynthAudioProcessorEditor(WitchSynthAudioPr
     setLookAndFeel(&lnf);
     activeHelpText = u8("Наведите курсор на любую ручку, категорию или кнопку — здесь появится описание на русском языке.");
 
-    // Setup Nexus-style Category List
     categoryModel.items.push_back(u8("\u2605 Favorites"));
     const auto& folders = getFactoryFolders();
     for (int i = 0; i < static_cast<int>(folders.size()); ++i)
@@ -215,6 +222,7 @@ WitchSynthAudioProcessorEditor::WitchSynthAudioProcessorEditor(WitchSynthAudioPr
                 repaint(332, 12, 496, 382);
             }
         }
+        giveAwayKeyboardFocus();
     };
 
     presetModel.onRowClick = [this](int row)
@@ -226,6 +234,7 @@ WitchSynthAudioProcessorEditor::WitchSynthAudioProcessorEditor(WitchSynthAudioPr
             updateLikeButtonVisual();
             repaint(332, 12, 496, 382);
         }
+        giveAwayKeyboardFocus();
     };
 
     categoryList.setRowHeight(23);
@@ -240,35 +249,35 @@ WitchSynthAudioProcessorEditor::WitchSynthAudioProcessorEditor(WitchSynthAudioPr
         const int total = static_cast<int>(getAllPresets().size());
         audioProcessor.loadPreset((audioProcessor.getCurrentPresetIndex() - 1 + total) % total);
         syncPresetUI();
+        giveAwayKeyboardFocus();
     };
     nextBtn.onClick = [this]
     {
         const int total = static_cast<int>(getAllPresets().size());
         audioProcessor.loadPreset((audioProcessor.getCurrentPresetIndex() + 1) % total);
         syncPresetUI();
+        giveAwayKeyboardFocus();
     };
     likeBtn.onClick = [this]
     {
         audioProcessor.toggleFavorite(audioProcessor.getCurrentPresetIndex());
         updateLikeButtonVisual();
-        if (selectedUiCategory == 0)
-            rebuildPresetListForCategory(0);
-        else
-            rebuildPresetListForCategory(selectedUiCategory);
+        rebuildPresetListForCategory(selectedUiCategory);
         syncPresetUI();
+        giveAwayKeyboardFocus();
     };
-    rndBtn.onClick = [this] { randomizeWitchPreset(); };
-    initBtn.onClick = [this] { audioProcessor.initPatch(); };
-    panicBtn.onClick = [this] { audioProcessor.triggerPanic(); };
+    rndBtn.onClick = [this] { randomizeWitchPreset(); giveAwayKeyboardFocus(); };
+    initBtn.onClick = [this] { audioProcessor.initPatch(); giveAwayKeyboardFocus(); };
+    panicBtn.onClick = [this] { audioProcessor.triggerPanic(); giveAwayKeyboardFocus(); };
 
     lockFxBtn.setClickingTogglesState(true);
     lockFxBtn.setToggleState(audioProcessor.lockFx.load(), juce::dontSendNotification);
-    lockFxBtn.onClick = [this] { audioProcessor.lockFx.store(lockFxBtn.getToggleState()); };
+    lockFxBtn.onClick = [this] { audioProcessor.lockFx.store(lockFxBtn.getToggleState()); giveAwayKeyboardFocus(); };
 
-    pageMainBtn.onClick = [this] { setSidePage(SidePage::Main); };
-    pageOscBtn.onClick  = [this] { setSidePage(SidePage::Osc); };
-    pageArpBtn.onClick  = [this] { setSidePage(SidePage::Arp); };
-    pageXyBtn.onClick   = [this] { setSidePage(SidePage::XY); };
+    pageMainBtn.onClick = [this] { setSidePage(SidePage::Main); giveAwayKeyboardFocus(); };
+    pageOscBtn.onClick  = [this] { setSidePage(SidePage::Osc); giveAwayKeyboardFocus(); };
+    pageArpBtn.onClick  = [this] { setSidePage(SidePage::Arp); giveAwayKeyboardFocus(); };
+    pageXyBtn.onClick   = [this] { setSidePage(SidePage::XY); giveAwayKeyboardFocus(); };
 
     addAndMakeVisible(prevBtn); addAndMakeVisible(nextBtn); addAndMakeVisible(likeBtn);
     addAndMakeVisible(rndBtn);  addAndMakeVisible(initBtn); addAndMakeVisible(lockFxBtn); addAndMakeVisible(panicBtn);
@@ -386,6 +395,7 @@ WitchSynthAudioProcessorEditor::WitchSynthAudioProcessorEditor(WitchSynthAudioPr
     addMouseListener(this, true);
     setSidePage(SidePage::Main);
     syncPresetUI();
+    disableFocusRecursive(*this);
     startTimerHz(30);
     setSize(1160, 720);
 }
@@ -427,6 +437,8 @@ void WitchSynthAudioProcessorEditor::initKnob(juce::Slider& s, const juce::Strin
 {
     s.setSliderStyle(juce::Slider::RotaryVerticalDrag);
     s.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 48, 12);
+    s.setWantsKeyboardFocus(false);
+    s.setMouseClickGrabsKeyboardFocus(false);
     addAndMakeVisible(s);
     sliderAtts.push_back(std::make_unique<SliderAtt>(audioProcessor.apvts, id, s));
     registerHelp(&s, ruHelp);
@@ -438,6 +450,8 @@ void WitchSynthAudioProcessorEditor::initKnob(juce::Slider& s, const juce::Strin
         lbl->setColour(juce::Label::textColourId, Colors::subText);
         lbl->setFont(juce::FontOptions(9.5f, juce::Font::bold));
         lbl->attachToComponent(&s, false);
+        lbl->setWantsKeyboardFocus(false);
+        lbl->setMouseClickGrabsKeyboardFocus(false);
         addAndMakeVisible(*lbl);
         registerHelp(lbl.get(), ruHelp);
         knobLabels[&s] = std::move(lbl);
@@ -448,6 +462,8 @@ void WitchSynthAudioProcessorEditor::initCombo(juce::ComboBox& c, const juce::St
 {
     for (int i = 0; i < items.size(); ++i)
         c.addItem(items[i], i + 1);
+    c.setWantsKeyboardFocus(false);
+    c.setMouseClickGrabsKeyboardFocus(false);
     addAndMakeVisible(c);
     comboAtts.push_back(std::make_unique<ComboAtt>(audioProcessor.apvts, id, c));
     registerHelp(&c, ruHelp);
@@ -455,6 +471,8 @@ void WitchSynthAudioProcessorEditor::initCombo(juce::ComboBox& c, const juce::St
 
 void WitchSynthAudioProcessorEditor::initToggle(juce::ToggleButton& b, const juce::String& id, const juce::String& ruHelp)
 {
+    b.setWantsKeyboardFocus(false);
+    b.setMouseClickGrabsKeyboardFocus(false);
     addAndMakeVisible(b);
     btnAtts.push_back(std::make_unique<BtnAtt>(audioProcessor.apvts, id, b));
     registerHelp(&b, ruHelp);
@@ -491,24 +509,20 @@ void WitchSynthAudioProcessorEditor::updateVisibility()
     const bool a = (currentPage == SidePage::Arp);
     const bool x = (currentPage == SidePage::XY);
 
-    // Main
     showCtrl(filterTypeBox, m); showCtrl(filterCutoff, m); showCtrl(filterReso, m); showCtrl(filterDrive, m);
     showCtrl(filterEnvAmt, m); showCtrl(filterDecay, m); showCtrl(filterKeyTrack, m); showCtrl(tiltAmt, m); showCtrl(stereoWidth, m);
     showCtrl(polyModeBox, m); showCtrl(morphPresetBox, m); showCtrl(ampA, m); showCtrl(ampD, m); showCtrl(ampS, m);
     showCtrl(ampR, m); showCtrl(glideTime, m); showCtrl(snapAmt, m); showCtrl(airAmt, m); showCtrl(morphAmt, m);
 
-    // Osc & 2040
     showCtrl(osc1WaveBox, o); showCtrl(osc2WaveBox, o);
     showCtrl(osc1Oct, o); showCtrl(osc1Semi, o); showCtrl(pwmWidth, o); showCtrl(xModAmt, o); showCtrl(osc1Detune, o); showCtrl(osc1Level, o);
     showCtrl(osc2Oct, o); showCtrl(osc2Semi, o); showCtrl(osc2Unison, o); showCtrl(osc2Level, o);
     showCtrl(subLevel, o); showCtrl(entropyAmt, o); showCtrl(gravityAmt, o); showCtrl(ghostVoxAmt, o);
 
-    // Arp & LFO
     showCtrl(lfoTargetBox, a); showCtrl(lfoShapeBox, a); showCtrl(lfoRate, a); showCtrl(lfoDepth, a);
     showCtrl(pitchPunch, a); showCtrl(pumpAmt, a); showCtrl(noiseLevel, a); showCtrl(vhsDrift, a);
     showCtrl(arpModeBox, a); showCtrl(arpRate, a); showCtrl(stepMatrix, a);
 
-    // XY
     showCtrl(xyPad, x);
 }
 
@@ -559,6 +573,8 @@ void WitchSynthAudioProcessorEditor::rebuildPresetListForCategory(int uiCategory
 
     presetList.updateContent();
     presetList.repaint();
+    disableFocusRecursive(categoryList);
+    disableFocusRecursive(presetList);
 }
 
 void WitchSynthAudioProcessorEditor::syncPresetUI()
@@ -641,8 +657,8 @@ void WitchSynthAudioProcessorEditor::timerCallback()
     const float rawPeak = audioProcessor.peakLevel.load(std::memory_order_relaxed);
     smoothedPeak = rawPeak > smoothedPeak ? rawPeak : smoothedPeak * 0.85f;
 
-    repaint(634, 322, 188, 66); // Oscilloscope
-    repaint(1110, 440, 26, 152); // Output Meter
+    repaint(634, 322, 188, 66);
+    repaint(1110, 440, 26, 152);
     if (currentPage == SidePage::Arp) stepMatrix.repaint();
     if (currentPage == SidePage::XY)  xyPad.repaint();
 }
@@ -662,7 +678,6 @@ void WitchSynthAudioProcessorEditor::paint(juce::Graphics& g)
         g.drawText(title, x + 10, y + 6, w - 20, 18, juce::Justification::left);
     };
 
-    // Top Side Panels
     juce::String leftTitle = "FILTER & TONE";
     juce::String rightTitle = "AMP, VOICING & MORPH A<->B";
     if (currentPage == SidePage::Osc) { leftTitle = "OSC 1 & OSC 2"; rightTitle = "SUB & 2040 PHYSICS"; }
@@ -691,13 +706,11 @@ void WitchSynthAudioProcessorEditor::paint(juce::Graphics& g)
         g.drawText(u8("Кликай шаги ниже: -- (пауза) | ON | +12 | 2X (дробь)"), 850, 178, 286, 18, juce::Justification::centred);
     }
 
-    // Center Nexus-Style Console Frame
     g.setColour(Colors::panel);
     g.fillRoundedRectangle(332.0f, 12.0f, 496.0f, 382.0f, 7.0f);
     g.setColour(Colors::purple.withAlpha(0.75f));
     g.drawRoundedRectangle(332.0f, 12.0f, 496.0f, 382.0f, 7.0f, 1.5f);
 
-    // Emblem + Title
     g.setColour(Colors::neon);
     juce::Path tri;
     tri.addTriangle(354.0f, 20.0f, 343.0f, 44.0f, 365.0f, 44.0f);
@@ -712,14 +725,12 @@ void WitchSynthAudioProcessorEditor::paint(juce::Graphics& g)
     g.setFont(juce::FontOptions(10.5f, juce::Font::bold));
     g.drawText("v9.0 NEXUS EDITION // 100 PRESETS", 548, 23, 270, 18, juce::Justification::right);
 
-    // Center LCD Screen Frame
     const juce::Rectangle<float> lcdFrame(342.0f, 84.0f, 476.0f, 232.0f);
     g.setColour(Colors::lcdBg);
     g.fillRoundedRectangle(lcdFrame, 5.0f);
     g.setColour(Colors::purple);
     g.drawRoundedRectangle(lcdFrame, 5.0f, 1.5f);
 
-    // LCD Header labels
     g.setColour(juce::Colour(0xff1a122e));
     g.fillRect(344, 86, 472, 19);
     g.setColour(Colors::neon);
@@ -727,7 +738,6 @@ void WitchSynthAudioProcessorEditor::paint(juce::Graphics& g)
     g.drawText("CATEGORY", 352, 87, 160, 17, juce::Justification::left);
     g.drawText("PRESET", 534, 87, 260, 17, juce::Justification::left);
 
-    // LCD Footer Active Preset Name
     g.setColour(juce::Colour(0xff171029));
     g.fillRect(344, 291, 472, 23);
     const int curIdx = audioProcessor.getCurrentPresetIndex();
@@ -740,7 +750,6 @@ void WitchSynthAudioProcessorEditor::paint(juce::Graphics& g)
     g.setFont(juce::FontOptions(10.5f));
     g.drawText(juce::String(curIdx + 1) + " / " + juce::String(allP.size()), 700, 292, 110, 21, juce::Justification::right);
 
-    // Oscilloscope inside Center Console
     const juce::Rectangle<float> scopeRect(636.0f, 324.0f, 182.0f, 58.0f);
     g.setColour(Colors::lcdBg);
     g.fillRoundedRectangle(scopeRect, 4.0f);
@@ -764,14 +773,12 @@ void WitchSynthAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(Colors::glow);
     g.strokePath(wave, juce::PathStrokeType(1.4f));
 
-    // Bottom 5 SEPARATED FX BOXES
     drawPanel(12,   404, 248, 266, "PREAMP / LO-FI");
     drawPanel(270,  404, 186, 266, "CHORUS");
     drawPanel(466,  404, 250, 266, "DELAY");
     drawPanel(726,  404, 268, 266, "REVERB & SHIMMER");
     drawPanel(1004, 404, 144, 266, "OUTPUT");
 
-    // Output Peak Meter
     const juce::Rectangle<float> meterRect(1116.0f, 444.0f, 14.0f, 142.0f);
     g.setColour(Colors::lcdBg);
     g.fillRoundedRectangle(meterRect, 3.0f);
@@ -781,7 +788,6 @@ void WitchSynthAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(smoothedPeak > 0.92f ? Colors::hotPink : Colors::neon);
     g.fillRoundedRectangle(meterRect.getX() + 1.0f, meterRect.getBottom() - fillH, meterRect.getWidth() - 2.0f, fillH, 2.0f);
 
-    // Bottom Russian Tooltip HUD Bar
     g.setColour(juce::Colour(0xff0d0a17));
     g.fillRoundedRectangle(12.0f, 678.0f, 1136.0f, 32.0f, 5.0f);
     g.setColour(Colors::purple.withAlpha(0.65f));
@@ -793,7 +799,6 @@ void WitchSynthAudioProcessorEditor::paint(juce::Graphics& g)
 
 void WitchSynthAudioProcessorEditor::resized()
 {
-    // Center Nexus Console & Page Tabs
     pageMainBtn.setBounds(342, 54, 115, 23);
     pageOscBtn.setBounds(462, 54, 115, 23);
     pageArpBtn.setBounds(582, 54, 115, 23);
@@ -810,7 +815,6 @@ void WitchSynthAudioProcessorEditor::resized()
     lockFxBtn.setBounds(342, 356, 138, 26);
     panicBtn.setBounds(486, 356, 140, 26);
 
-    // Page 1: MAIN
     filterTypeBox.setBounds(24, 42, 286, 24);
     filterCutoff.setBounds(22, 102, 68, 66);
     filterReso.setBounds(96, 102, 68, 66);
@@ -832,7 +836,6 @@ void WitchSynthAudioProcessorEditor::resized()
     airAmt.setBounds(996, 218, 68, 66);
     morphAmt.setBounds(1070, 218, 68, 66);
 
-    // Page 2: OSC & 2040
     osc1WaveBox.setBounds(24, 42, 138, 24);
     osc2WaveBox.setBounds(170, 42, 138, 24);
     osc1Oct.setBounds(18, 102, 56, 62);
@@ -851,7 +854,6 @@ void WitchSynthAudioProcessorEditor::resized()
     gravityAmt.setBounds(884, 224, 82, 70);
     ghostVoxAmt.setBounds(1018, 224, 82, 70);
 
-    // Page 3: ARP & LFO
     lfoTargetBox.setBounds(24, 42, 138, 24);
     lfoShapeBox.setBounds(170, 42, 138, 24);
     lfoRate.setBounds(30, 102, 74, 66);
@@ -865,11 +867,8 @@ void WitchSynthAudioProcessorEditor::resized()
     arpRate.setBounds(952, 98, 82, 64);
     stepMatrix.setBounds(852, 206, 282, 66);
 
-    // Page 4: XY
     xyPad.setBounds(26, 46, 282, 330);
 
-    // Bottom 5 Separated FX Boxes
-    // 1. PREAMP / LO-FI (x=12, w=248)
     distBtn.setBounds(22, 434, 72, 22);
     distModeBox.setBounds(98, 434, 152, 22);
     distDrive.setBounds(44, 486, 66, 60);
@@ -877,27 +876,23 @@ void WitchSynthAudioProcessorEditor::resized()
     crushAmount.setBounds(44, 582, 66, 60);
     lowCutHz.setBounds(160, 582, 66, 60);
 
-    // 2. CHORUS (x=270, w=186)
     chorusBtn.setBounds(280, 434, 100, 22);
     chorusMix.setBounds(288, 486, 66, 60);
     chorusRate.setBounds(372, 486, 66, 60);
     chorusDepth.setBounds(330, 582, 66, 60);
 
-    // 3. DELAY (x=466, w=250)
     delayBtn.setBounds(476, 434, 78, 22);
     delayModeBox.setBounds(558, 434, 146, 22);
     delayTime.setBounds(498, 486, 66, 60);
     delayFb.setBounds(614, 486, 66, 60);
     delayMix.setBounds(556, 582, 66, 60);
 
-    // 4. REVERB (x=726, w=268)
     reverbBtn.setBounds(736, 434, 90, 22);
     freezeBtn.setBounds(894, 434, 88, 22);
     reverbSize.setBounds(768, 486, 66, 60);
     reverbMix.setBounds(886, 486, 66, 60);
     haloAmt.setBounds(827, 582, 66, 60);
 
-    // 5. OUTPUT (x=1004, w=144)
     masterGain.setBounds(1022, 464, 78, 72);
     tapeStopBtn.setBounds(1018, 602, 116, 36);
 }
