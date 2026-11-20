@@ -1,17 +1,19 @@
 #include "PluginEditor.h"
+#include <cmath>
 
 namespace Colors
 {
-    const juce::Colour bg       (0xff07050c);
-    const juce::Colour panel    (0xff120e1e);
-    const juce::Colour lcdBg    (0xff06040e);
-    const juce::Colour border   (0xff412a6b);
-    const juce::Colour purple   (0xff9d4edd);
-    const juce::Colour neon     (0xffc77dff);
-    const juce::Colour glow     (0xffe0aaff);
-    const juce::Colour hotPink  (0xffff4d9d);
-    const juce::Colour text     (0xffede6f7);
-    const juce::Colour subText  (0xff9e8dbb);
+    const juce::Colour bg        (0xff0d0b14);
+    const juce::Colour panelTop  (0xff1b1628);
+    const juce::Colour panelBot  (0xff100d19);
+    const juce::Colour lcdBg     (0xff080513);
+    const juce::Colour border    (0xff382759);
+    const juce::Colour purple    (0xff8b3dff);
+    const juce::Colour neon      (0xffc77dff);
+    const juce::Colour glow      (0xffedd4ff);
+    const juce::Colour hotPink   (0xffff3e8e);
+    const juce::Colour text      (0xffe9e2f5);
+    const juce::Colour subText   (0xff9889b5);
 }
 
 static juce::String u8(const char* s) { return juce::String::fromUTF8(s); }
@@ -26,73 +28,165 @@ static void disableFocusRecursive(juce::Component& comp)
 
 WitchLookAndFeel::WitchLookAndFeel()
 {
-    setColour(juce::ComboBox::backgroundColourId, juce::Colour(0xff1a142b));
+    setColour(juce::ComboBox::backgroundColourId, juce::Colour(0xff130f1f));
     setColour(juce::ComboBox::outlineColourId, Colors::border);
     setColour(juce::ComboBox::textColourId, Colors::text);
     setColour(juce::ComboBox::arrowColourId, Colors::neon);
-    setColour(juce::PopupMenu::backgroundColourId, juce::Colour(0xff151024));
+    setColour(juce::PopupMenu::backgroundColourId, juce::Colour(0xff120e1e));
     setColour(juce::PopupMenu::highlightedBackgroundColourId, Colors::purple);
     setColour(juce::PopupMenu::textColourId, Colors::text);
-    setColour(juce::TextButton::buttonColourId, juce::Colour(0xff201638));
+    setColour(juce::TextButton::buttonColourId, juce::Colour(0xff1b152a));
     setColour(juce::TextButton::buttonOnColourId, Colors::purple);
     setColour(juce::TextButton::textColourOffId, Colors::glow);
     setColour(juce::TextButton::textColourOnId, juce::Colours::white);
-    setColour(juce::ToggleButton::tickColourId, Colors::neon);
     setColour(juce::ToggleButton::textColourId, Colors::text);
     setColour(juce::Slider::textBoxTextColourId, Colors::glow);
+    setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xff090611));
     setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    setColour(juce::ListBox::backgroundColourId, Colors::lcdBg);
-    setColour(juce::ListBox::outlineColourId, Colors::border);
-    setColour(juce::ScrollBar::thumbColourId, Colors::purple);
+    setColour(juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
+    setColour(juce::ListBox::outlineColourId, juce::Colours::transparentBlack);
+    setColour(juce::ScrollBar::thumbColourId, Colors::purple.withAlpha(0.75f));
 }
 
 void WitchLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w, int h,
                                         float pos, float startAngle, float endAngle, juce::Slider&)
 {
-    const float radius = static_cast<float>(juce::jmin(w, h)) * 0.42f;
+    const float radius = static_cast<float>(juce::jmin(w, h)) * 0.40f;
     const float cx = static_cast<float>(x) + static_cast<float>(w) * 0.5f;
     const float cy = static_cast<float>(y) + static_cast<float>(h) * 0.48f;
     const float angle = startAngle + pos * (endAngle - startAngle);
 
+    const float tickR = radius + 4.0f;
+    for (int i = 0; i <= 10; ++i)
+    {
+        const float tNorm = static_cast<float>(i) / 10.0f;
+        const float tAng = startAngle + tNorm * (endAngle - startAngle);
+        const float tx = cx + std::sin(tAng) * tickR;
+        const float ty = cy - std::cos(tAng) * tickR;
+        g.setColour(tNorm <= pos + 0.02f ? Colors::neon : juce::Colour(0xff382b52));
+        g.fillEllipse(tx - 1.2f, ty - 1.2f, 2.4f, 2.4f);
+    }
+
     juce::Path track;
     track.addCentredArc(cx, cy, radius, radius, 0.0f, startAngle, endAngle, true);
-    g.setColour(juce::Colour(0xff251b3d));
-    g.strokePath(track, juce::PathStrokeType(3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.setColour(juce::Colour(0xff0b0813));
+    g.strokePath(track, juce::PathStrokeType(3.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
     juce::Path glowArc;
     glowArc.addCentredArc(cx, cy, radius, radius, 0.0f, startAngle, angle, true);
-    g.setColour(Colors::purple.withAlpha(0.35f));
-    g.strokePath(glowArc, juce::PathStrokeType(5.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.setColour(Colors::purple.withAlpha(0.40f));
+    g.strokePath(glowArc, juce::PathStrokeType(5.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     g.setColour(Colors::neon);
-    g.strokePath(glowArc, juce::PathStrokeType(2.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.strokePath(glowArc, juce::PathStrokeType(2.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
-    const float innerR = radius * 0.70f;
-    g.setColour(juce::Colour(0xff191229));
+    const float innerR = radius * 0.74f;
+    g.setColour(juce::Colour(0xaa000000));
+    g.fillEllipse(cx - innerR + 1.5f, cy - innerR + 2.5f, innerR * 2.0f, innerR * 2.0f);
+
+    juce::ColourGradient metalGrad(juce::Colour(0xff3a2f52), cx - innerR * 0.6f, cy - innerR * 0.7f,
+                                   juce::Colour(0xff110d1b), cx + innerR * 0.7f, cy + innerR * 0.8f, true);
+    g.setGradientFill(metalGrad);
     g.fillEllipse(cx - innerR, cy - innerR, innerR * 2.0f, innerR * 2.0f);
-    g.setColour(Colors::border);
-    g.drawEllipse(cx - innerR, cy - innerR, innerR * 2.0f, innerR * 2.0f, 1.0f);
+
+    g.setColour(juce::Colour(0x45ffffff));
+    g.drawEllipse(cx - innerR + 0.5f, cy - innerR + 0.5f, innerR * 2.0f - 1.0f, innerR * 2.0f - 1.0f, 1.0f);
+
+    const float coreR = innerR * 0.74f;
+    g.setColour(juce::Colour(0xff1b1529));
+    g.fillEllipse(cx - coreR, cy - coreR, coreR * 2.0f, coreR * 2.0f);
 
     juce::Path ptr;
-    ptr.addRectangle(-1.2f, -innerR + 2.0f, 2.4f, innerR * 0.52f);
+    ptr.addRoundedRectangle(-1.3f, -innerR + 2.0f, 2.6f, innerR * 0.55f, 1.0f);
     ptr.applyTransform(juce::AffineTransform::rotation(angle).translated(cx, cy));
     g.setColour(Colors::glow);
     g.fillPath(ptr);
+}
+
+void WitchLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButton& b, bool highlighted, bool down)
+{
+    const auto r = b.getLocalBounds().toFloat().reduced(1.0f);
+    const bool on = b.getToggleState();
+
+    juce::ColourGradient keyGrad(on ? juce::Colour(0xff342254) : juce::Colour(0xff201930), 0.0f, r.getY(),
+                                 on ? juce::Colour(0xff1d1330) : juce::Colour(0xff110d1a), 0.0f, r.getBottom(), false);
+    if (down) keyGrad = juce::ColourGradient(juce::Colour(0xff120d1c), 0.0f, r.getY(), juce::Colour(0xff201833), 0.0f, r.getBottom(), false);
+    g.setGradientFill(keyGrad);
+    g.fillRoundedRectangle(r, 4.0f);
+
+    g.setColour(on ? Colors::neon.withAlpha(0.85f) : (highlighted ? Colors::purple : Colors::border));
+    g.drawRoundedRectangle(r, 4.0f, 1.1f);
+
+    const float ledR = 3.5f;
+    const float lx = r.getX() + 9.0f;
+    const float ly = r.getCentreY();
+    if (on)
+    {
+        g.setColour(Colors::neon.withAlpha(0.35f));
+        g.fillEllipse(lx - 6.5f, ly - 6.5f, 13.0f, 13.0f);
+        g.setColour((b.getButtonText() == "T.STOP" || b.getButtonText() == "FREEZE") ? Colors::hotPink : Colors::glow);
+        g.fillEllipse(lx - ledR, ly - ledR, ledR * 2.0f, ledR * 2.0f);
+    }
+    else
+    {
+        g.setColour(juce::Colour(0xff2a203d));
+        g.fillEllipse(lx - ledR, ly - ledR, ledR * 2.0f, ledR * 2.0f);
+    }
+
+    g.setColour(on ? juce::Colours::white : Colors::subText);
+    g.setFont(juce::FontOptions(10.5f, juce::Font::bold));
+    g.drawText(b.getButtonText(), static_cast<int>(r.getX()) + 16, static_cast<int>(r.getY()),
+               static_cast<int>(r.getWidth()) - 18, static_cast<int>(r.getHeight()), juce::Justification::centred, true);
+}
+
+void WitchLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& b, const juce::Colour& bgCol,
+                                            bool highlighted, bool down)
+{
+    const auto r = b.getLocalBounds().toFloat().reduced(0.5f);
+    const auto topC = down ? bgCol.darker(0.3f) : (highlighted ? bgCol.brighter(0.18f) : bgCol.brighter(0.08f));
+    const auto botC = down ? bgCol.brighter(0.1f) : bgCol.darker(0.35f);
+    g.setGradientFill(juce::ColourGradient(topC, 0.0f, r.getY(), botC, 0.0f, r.getBottom(), false));
+    g.fillRoundedRectangle(r, 4.0f);
+
+    g.setColour(juce::Colour(0x28ffffff));
+    g.drawHorizontalLine(static_cast<int>(r.getY()) + 1, r.getX() + 2.0f, r.getRight() - 2.0f);
+    g.setColour(b.getToggleState() ? Colors::glow : Colors::border);
+    g.drawRoundedRectangle(r, 4.0f, 1.0f);
+}
+
+void WitchLookAndFeel::drawComboBox(juce::Graphics& g, int width, int height, bool,
+                                    int buttonX, int, int buttonW, int, juce::ComboBox&)
+{
+    const juce::Rectangle<float> r(0.5f, 0.5f, static_cast<float>(width) - 1.0f, static_cast<float>(height) - 1.0f);
+    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff0b0813), 0.0f, 0.0f, juce::Colour(0xff171126), 0.0f, static_cast<float>(height), false));
+    g.fillRoundedRectangle(r, 3.5f);
+    g.setColour(Colors::border);
+    g.drawRoundedRectangle(r, 3.5f, 1.0f);
+
+    const float cx = static_cast<float>(buttonX) + static_cast<float>(buttonW) * 0.5f;
+    const float cy = static_cast<float>(height) * 0.5f;
+    juce::Path arrow;
+    arrow.addTriangle(cx - 4.0f, cy - 2.0f, cx + 4.0f, cy - 2.0f, cx, cy + 3.0f);
+    g.setColour(Colors::neon);
+    g.fillPath(arrow);
 }
 
 void WitchListModel::paintListBoxItem(int row, juce::Graphics& g, int w, int h, bool selected)
 {
     if (selected)
     {
-        g.setColour(Colors::purple.withAlpha(0.88f));
-        g.fillRoundedRectangle(2.0f, 1.0f, static_cast<float>(w) - 4.0f, static_cast<float>(h) - 2.0f, 3.0f);
+        g.setGradientFill(juce::ColourGradient(Colors::purple.withAlpha(0.90f), 0.0f, 0.0f,
+                                               juce::Colour(0xff5e23a6).withAlpha(0.90f), static_cast<float>(w), 0.0f, false));
+        g.fillRoundedRectangle(3.0f, 1.0f, static_cast<float>(w) - 6.0f, static_cast<float>(h) - 2.0f, 3.0f);
+        g.setColour(Colors::glow.withAlpha(0.5f));
+        g.drawRoundedRectangle(3.0f, 1.0f, static_cast<float>(w) - 6.0f, static_cast<float>(h) - 2.0f, 3.0f, 0.8f);
     }
     else if (row % 2 == 1)
     {
-        g.setColour(juce::Colour(0x10ffffff));
-        g.fillRect(0, 0, w, h);
+        g.setColour(juce::Colour(0x0cffffff));
+        g.fillRect(2, 0, w - 4, h);
     }
 
-    g.setColour(selected ? juce::Colours::white : Colors::text);
+    g.setColour(selected ? juce::Colours::white : Colors::text.withAlpha(0.92f));
     g.setFont(juce::FontOptions(12.0f, selected ? juce::Font::bold : juce::Font::plain));
     if (row >= 0 && row < static_cast<int>(items.size()))
         g.drawText(items[static_cast<size_t>(row)], 8, 0, w - 12, h, juce::Justification::left, true);
@@ -103,7 +197,7 @@ WitchXYPad::WitchXYPad(juce::AudioProcessorValueTreeState& state) : apvts(state)
 void WitchXYPad::paint(juce::Graphics& g)
 {
     const auto b = getLocalBounds().toFloat();
-    g.setColour(juce::Colour(0xff0a0713));
+    g.setColour(juce::Colour(0xff080512));
     g.fillRoundedRectangle(b, 6.0f);
     g.setColour(Colors::border);
     g.drawRoundedRectangle(b, 6.0f, 1.2f);
@@ -167,13 +261,13 @@ void WitchStepMatrix::paint(juce::Graphics& g)
         const int val = static_cast<int>(apvts.getRawParameterValue("seq" + juce::String(i))->load());
         const juce::Rectangle<float> r(static_cast<float>(i) * w + 2.0f, 2.0f, w - 4.0f, h - 4.0f);
 
-        juce::Colour c(0xff1b1529);
+        juce::Colour c(0xff191328);
         if (val == 1) c = Colors::purple;
         else if (val == 2) c = Colors::neon;
         else if (val == 3) c = Colors::hotPink;
 
         const bool isPlayhead = (arpMode > 0) && (i == cur);
-        g.setColour(isPlayhead ? c.brighter(0.35f) : c.withAlpha(val == 0 ? 0.85f : 0.72f));
+        g.setColour(isPlayhead ? c.brighter(0.35f) : c.withAlpha(val == 0 ? 0.90f : 0.78f));
         g.fillRoundedRectangle(r, 4.0f);
         g.setColour(isPlayhead ? juce::Colours::white : Colors::border);
         g.drawRoundedRectangle(r, 4.0f, isPlayhead ? 1.6f : 1.0f);
@@ -197,7 +291,8 @@ void WitchStepMatrix::mouseDown(const juce::MouseEvent& e)
 }
 
 WitchSynthAudioProcessorEditor::WitchSynthAudioProcessorEditor(WitchSynthAudioProcessor& p)
-    : AudioProcessorEditor(&p), audioProcessor(p), xyPad(p.apvts), stepMatrix(p.apvts, p.arpStepDisplay)
+    : AudioProcessorEditor(&p), audioProcessor(p), xyPad(p.apvts), stepMatrix(p.apvts, p.arpStepDisplay),
+      midiKeyboard(p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard)
 {
     setLookAndFeel(&lnf);
     activeHelpText = u8("Наведите курсор на любую ручку, категорию или кнопку — здесь появится описание на русском языке.");
@@ -219,7 +314,7 @@ WitchSynthAudioProcessorEditor::WitchSynthAudioProcessorEditor(WitchSynthAudioPr
                 audioProcessor.loadPreset(visiblePresetIndices[0]);
                 lastSeenPreset = audioProcessor.getCurrentPresetIndex();
                 updateLikeButtonVisual();
-                repaint(332, 12, 496, 382);
+                repaint(330, 12, 500, 382);
             }
         }
         giveAwayKeyboardFocus();
@@ -232,15 +327,15 @@ WitchSynthAudioProcessorEditor::WitchSynthAudioProcessorEditor(WitchSynthAudioPr
             audioProcessor.loadPreset(visiblePresetIndices[static_cast<size_t>(row)]);
             lastSeenPreset = audioProcessor.getCurrentPresetIndex();
             updateLikeButtonVisual();
-            repaint(332, 12, 496, 382);
+            repaint(330, 12, 500, 382);
         }
         giveAwayKeyboardFocus();
     };
 
-    categoryList.setRowHeight(23);
-    presetList.setRowHeight(22);
-    categoryList.setOutlineThickness(1);
-    presetList.setOutlineThickness(1);
+    categoryList.setRowHeight(22);
+    presetList.setRowHeight(21);
+    categoryList.setOutlineThickness(0);
+    presetList.setOutlineThickness(0);
     addAndMakeVisible(categoryList);
     addAndMakeVisible(presetList);
 
@@ -270,6 +365,16 @@ WitchSynthAudioProcessorEditor::WitchSynthAudioProcessorEditor(WitchSynthAudioPr
     initBtn.onClick = [this] { audioProcessor.initPatch(); giveAwayKeyboardFocus(); };
     panicBtn.onClick = [this] { audioProcessor.triggerPanic(); giveAwayKeyboardFocus(); };
 
+    kbdBtn.setClickingTogglesState(true);
+    kbdBtn.setToggleState(showKeyboard, juce::dontSendNotification);
+    kbdBtn.onClick = [this]
+    {
+        showKeyboard = kbdBtn.getToggleState();
+        midiKeyboard.setVisible(showKeyboard);
+        setSize(1160, showKeyboard ? 790 : 720);
+        giveAwayKeyboardFocus();
+    };
+
     lockFxBtn.setClickingTogglesState(true);
     lockFxBtn.setToggleState(audioProcessor.lockFx.load(), juce::dontSendNotification);
     lockFxBtn.onClick = [this] { audioProcessor.lockFx.store(lockFxBtn.getToggleState()); giveAwayKeyboardFocus(); };
@@ -280,24 +385,35 @@ WitchSynthAudioProcessorEditor::WitchSynthAudioProcessorEditor(WitchSynthAudioPr
     pageXyBtn.onClick   = [this] { setSidePage(SidePage::XY); giveAwayKeyboardFocus(); };
 
     addAndMakeVisible(prevBtn); addAndMakeVisible(nextBtn); addAndMakeVisible(likeBtn);
-    addAndMakeVisible(rndBtn);  addAndMakeVisible(initBtn); addAndMakeVisible(lockFxBtn); addAndMakeVisible(panicBtn);
+    addAndMakeVisible(rndBtn);  addAndMakeVisible(initBtn); addAndMakeVisible(kbdBtn);
+    addAndMakeVisible(lockFxBtn); addAndMakeVisible(panicBtn);
     addAndMakeVisible(pageMainBtn); addAndMakeVisible(pageOscBtn); addAndMakeVisible(pageArpBtn); addAndMakeVisible(pageXyBtn);
 
-    registerHelp(&categoryList, u8("Категории звуков: выберите тип звука (Bass, Lead, Pad, Pluck, Arp, Choir, FX) или Избранное (\u2605 Favorites)."));
-    registerHelp(&presetList, u8("Список звуков: кликните по любому пресету в окне, чтобы мгновенно загрузить его."));
+    midiKeyboard.setAvailableRange(36, 96);
+    midiKeyboard.setKeyWidth(19.0f);
+    midiKeyboard.setColour(juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour(0xffd7ceea));
+    midiKeyboard.setColour(juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour(0xff130e1e));
+    midiKeyboard.setColour(juce::MidiKeyboardComponent::keySeparatorLineColourId, Colors::border);
+    midiKeyboard.setColour(juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, Colors::purple.withAlpha(0.45f));
+    midiKeyboard.setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId, Colors::neon);
+    addAndMakeVisible(midiKeyboard);
+
+    registerHelp(&categoryList, u8("Категории звуков: выберите тип (Bass, Lead, Pad, Pluck, Arp, Choir, FX) или Избранное (\u2605 Favorites)."));
+    registerHelp(&presetList, u8("Список звуков под фиолетовым стеклом: кликните по пресету, чтобы мгновенно загрузить его."));
     registerHelp(&prevBtn, u8("Предыдущий пресет."));
     registerHelp(&nextBtn, u8("Следующий пресет."));
     registerHelp(&likeBtn, u8("Лайк (\u2665): добавляет или удаляет текущий звук в папку \u2605 Favorites (сохраняется на диск)."));
     registerHelp(&rndBtn, u8("RND: случайная генерация мрачного Witch House звука и ритма секвенсора."));
     registerHelp(&initBtn, u8("INIT: сброс всех ручек в чистый звук для создания патча с нуля."));
+    registerHelp(&kbdBtn, u8("KBD: показывает или убирает экранную пианино-клавиатуру внизу окна."));
     registerHelp(&lockFxBtn, u8("LOCK FX: сохраняет настройки эффектов и XY-пада при переключении звуков."));
     registerHelp(&panicBtn, u8("PANIC: мгновенно глушит зависшие ноты, Freeze и бесконечный дилей."));
-    registerHelp(&pageMainBtn, u8("Вкладка MAIN: фильтр, тональность, огибающая громкости и Morph A\u2194B."));
+    registerHelp(&midiKeyboard, u8("Экранная клавиатура: нажимайте на клавиши мышкой, кнопка KBD сверху убирает её."));
+    registerHelp(&pageMainBtn, u8("Вкладка MAIN: фильтр с живым графиком, тональность, живой график ADSR и Morph A\u2194B."));
     registerHelp(&pageOscBtn, u8("Вкладка OSC: настройка волн OSC 1 / OSC 2, саб-баса и физики 2040 (Entropy, Gravity, Ghost)."));
     registerHelp(&pageArpBtn, u8("Вкладка ARP: LFO-модуляция, сайдчейн Pump и 8-шаговый секвенсор с дробями (Ratchets)."));
     registerHelp(&pageXyBtn, u8("Вкладка XY: 2D-пад Aether Core для мгновенного морфинга агрессии и пространства."));
 
-    // Side Page 1: MAIN
     initCombo(filterTypeBox, "filterType", { "LowPass", "HighPass", "BandPass", "Formant", "Comb", "DualAcid" },
         u8("Тип фильтра: LP/HP/BP, Formant (гласные), Comb (струны по нотам) и DualAcid 24dB."));
     initKnob(filterCutoff, "filterCutoff", "CUTOFF", u8("CUTOFF: частота среза фильтра (в Comb меняет яркость струны, в Formant — гласную)."));
@@ -313,6 +429,8 @@ WitchSynthAudioProcessorEditor::WitchSynthAudioProcessorEditor(WitchSynthAudioPr
     const auto& allP = getAllPresets();
     for (int i = 0; i < static_cast<int>(allP.size()); ++i)
         morphPresetBox.addItem("B: " + juce::String(allP[static_cast<size_t>(i)].name), i + 1);
+    morphPresetBox.setWantsKeyboardFocus(false);
+    morphPresetBox.setMouseClickGrabsKeyboardFocus(false);
     addAndMakeVisible(morphPresetBox);
     comboAtts.push_back(std::make_unique<ComboAtt>(audioProcessor.apvts, "morphPreset", morphPresetBox));
     registerHelp(&morphPresetBox, u8("Цель B для морфинга: выберите звук, в который будет превращаться текущий пресет."));
@@ -326,7 +444,6 @@ WitchSynthAudioProcessorEditor::WitchSynthAudioProcessorEditor(WitchSynthAudioPr
     initKnob(airAmt, "airAmt", "AIR", u8("CRYSTAL AIR: эксайтер высоких частот (5.5+ kHz) для стеклянного воздуха."));
     initKnob(morphAmt, "morphAmt", "MORPH B", u8("MORPH A\u2194B: плавно превращает текущий звук в пресет B в реальном времени!"));
 
-    // Side Page 2: OSC & 2040
     juce::StringArray waves{ "Saw", "Pulse", "Tri", "NES4", "Sine", "Spectral", "ChaosPWM", "AcidForm" };
     initCombo(osc1WaveBox, "osc1Wave", waves, u8("Волна OSC 1 (Saw, Pulse, Tri, NES4, Sine, Spectral, ChaosPWM, AcidForm)."));
     initCombo(osc2WaveBox, "osc2Wave", waves, u8("Волна OSC 2 для наслоения и FM-модуляции."));
@@ -345,7 +462,6 @@ WitchSynthAudioProcessorEditor::WitchSynthAudioProcessorEditor(WitchSynthAudioPr
     initKnob(gravityAmt, "gravityAmt", "GRAVITY", u8("GRAVITY: гравитационное проседание питча и орбит от энергии баса."));
     initKnob(ghostVoxAmt, "ghostVoxAmt", "GHOST", u8("GHOST VOX: гармонические квинтовые и октавные тени в хвосте ноты."));
 
-    // Side Page 3: ARP & LFO
     initCombo(lfoTargetBox, "lfoTarget", { "Pitch", "Cutoff", "Morph" }, u8("Цель LFO: Pitch (вибрато), Cutoff (срез фильтра) или Morph (форма волны)."));
     initCombo(lfoShapeBox, "lfoShape", { "Sine", "Square", "Ramp", "S&H", "BioChaos" }, u8("Форма LFO: плавная, ступеньки S&H-глитча или живой аттрактор Лоренца (BioChaos)."));
     initKnob(lfoRate, "lfoRate", "RATE", u8("RATE: скорость LFO."));
@@ -360,11 +476,9 @@ WitchSynthAudioProcessorEditor::WitchSynthAudioProcessorEditor(WitchSynthAudioPr
     addAndMakeVisible(stepMatrix);
     registerHelp(&stepMatrix, u8("8-шаговый секвенсор: кликайте по кубикам (-- пауза, ON удар, +12 октава, 2X двойная дробь)."));
 
-    // Side Page 4: XY CORE
     addAndMakeVisible(xyPad);
     registerHelp(&xyPad, u8("AETHER XY: по X (CHAOS) — агрессия и перегруз, по Y (DIMENSION) — космос и шиммер."));
 
-    // Bottom Separated FX Controls (always visible)
     initToggle(distBtn, "distOn", u8("Включает блок перегруза/сатурации."));
     initCombo(distModeBox, "distMode", { "Tube", "Diode", "Rectify", "FoldX", "BitClip" }, u8("Режим перегруза (2x оверсэмплинг): лампа, диод RAT, Rectify, FoldX, BitClip."));
     initKnob(distDrive, "distDrive", "DRIVE", u8("Сила перегруза."));
@@ -397,7 +511,7 @@ WitchSynthAudioProcessorEditor::WitchSynthAudioProcessorEditor(WitchSynthAudioPr
     syncPresetUI();
     disableFocusRecursive(*this);
     startTimerHz(30);
-    setSize(1160, 720);
+    setSize(1160, showKeyboard ? 790 : 720);
 }
 
 WitchSynthAudioProcessorEditor::~WitchSynthAudioProcessorEditor()
@@ -405,6 +519,60 @@ WitchSynthAudioProcessorEditor::~WitchSynthAudioProcessorEditor()
     removeMouseListener(this);
     stopTimer();
     setLookAndFeel(nullptr);
+}
+
+void WitchSynthAudioProcessorEditor::buildChassisTexture()
+{
+    const int W = juce::jmax(100, getWidth());
+    const int H = juce::jmax(100, getHeight());
+    chassisCache = juce::Image(juce::Image::RGB, W, H, false);
+    juce::Graphics tg(chassisCache);
+
+    tg.setGradientFill(juce::ColourGradient(juce::Colour(0xff161222), 0.0f, 0.0f,
+                                            juce::Colour(0xff09070f), 0.0f, static_cast<float>(H), false));
+    tg.fillAll();
+
+    juce::Random rng(20372040);
+    for (int y = 0; y < H; ++y)
+    {
+        const float streak = (rng.nextFloat() - 0.5f) * 0.032f;
+        tg.setColour(streak > 0.0f ? juce::Colours::white.withAlpha(streak) : juce::Colours::black.withAlpha(-streak * 1.4f));
+        tg.drawHorizontalLine(y, 0.0f, static_cast<float>(W));
+    }
+    for (int i = 0; i < 5000; ++i)
+    {
+        const int rx = rng.nextInt(W);
+        const int ry = rng.nextInt(H);
+        tg.setColour(rng.nextBool() ? juce::Colour(0x0cffffff) : juce::Colour(0x14000000));
+        tg.fillRect(rx, ry, 2, 1);
+    }
+
+    auto drawRackEar = [&](int ex)
+    {
+        tg.setGradientFill(juce::ColourGradient(juce::Colour(0xff231d33), static_cast<float>(ex), 0.0f,
+                                                juce::Colour(0xff120e1c), static_cast<float>(ex + 12), 0.0f, false));
+        tg.fillRect(ex, 0, 12, H);
+        tg.setColour(juce::Colour(0x28ffffff));
+        tg.drawVerticalLine(ex == 0 ? 11 : ex, 0.0f, static_cast<float>(H));
+    };
+    drawRackEar(0);
+    drawRackEar(W - 12);
+
+    auto drawScrew = [&](float sx, float sy)
+    {
+        tg.setColour(juce::Colour(0xbb000000));
+        tg.fillEllipse(sx - 5.5f, sy - 4.5f, 11.0f, 11.0f);
+        tg.setGradientFill(juce::ColourGradient(juce::Colour(0xff6b6380), sx - 4.0f, sy - 4.0f,
+                                                juce::Colour(0xff211c2b), sx + 4.0f, sy + 4.0f, true));
+        tg.fillEllipse(sx - 5.0f, sy - 5.0f, 10.0f, 10.0f);
+        tg.setColour(juce::Colour(0xff120e1a));
+        tg.drawLine(sx - 3.2f, sy - 2.0f, sx + 3.2f, sy + 2.0f, 1.4f);
+        tg.drawLine(sx - 2.0f, sy + 3.2f, sx + 2.0f, sy - 3.2f, 1.1f);
+    };
+    drawScrew(21.0f, 22.0f);
+    drawScrew(static_cast<float>(W) - 21.0f, 22.0f);
+    drawScrew(21.0f, static_cast<float>(H) - 22.0f);
+    drawScrew(static_cast<float>(W) - 21.0f, static_cast<float>(H) - 22.0f);
 }
 
 void WitchSynthAudioProcessorEditor::registerHelp(juce::Component* c, const juce::String& ruHelp)
@@ -423,7 +591,7 @@ void WitchSynthAudioProcessorEditor::mouseEnter(const juce::MouseEvent& e)
             if (activeHelpText != it->second)
             {
                 activeHelpText = it->second;
-                repaint(12, 676, 1136, 36);
+                repaint(16, getHeight() - 40, 1128, 34);
             }
             return;
         }
@@ -436,7 +604,10 @@ void WitchSynthAudioProcessorEditor::mouseExit(const juce::MouseEvent&) {}
 void WitchSynthAudioProcessorEditor::initKnob(juce::Slider& s, const juce::String& id, const juce::String& name, const juce::String& ruHelp, bool attachLbl)
 {
     s.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-    s.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 48, 12);
+    s.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 48, 13);
+    s.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xff090611));
+    s.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    s.setColour(juce::Slider::textBoxTextColourId, Colors::glow);
     s.setWantsKeyboardFocus(false);
     s.setMouseClickGrabsKeyboardFocus(false);
     addAndMakeVisible(s);
@@ -490,7 +661,7 @@ void WitchSynthAudioProcessorEditor::setSidePage(SidePage page)
     currentPage = page;
     auto styleTab = [&](juce::TextButton& b, bool active)
     {
-        b.setColour(juce::TextButton::buttonColourId, active ? Colors::purple : juce::Colour(0xff201638));
+        b.setColour(juce::TextButton::buttonColourId, active ? Colors::purple : juce::Colour(0xff1b152a));
         b.setColour(juce::TextButton::textColourOffId, active ? juce::Colours::white : Colors::glow);
     };
     styleTab(pageMainBtn, currentPage == SidePage::Main);
@@ -530,7 +701,7 @@ void WitchSynthAudioProcessorEditor::updateLikeButtonVisual()
 {
     const bool fav = audioProcessor.isFavorite(audioProcessor.getCurrentPresetIndex());
     likeBtn.setButtonText(fav ? u8("\u2665") : u8("\u2661"));
-    likeBtn.setColour(juce::TextButton::buttonColourId, fav ? Colors::hotPink : juce::Colour(0xff201638));
+    likeBtn.setColour(juce::TextButton::buttonColourId, fav ? Colors::hotPink : juce::Colour(0xff1b152a));
     likeBtn.setColour(juce::TextButton::textColourOffId, fav ? juce::Colours::white : Colors::glow);
 }
 
@@ -544,15 +715,12 @@ void WitchSynthAudioProcessorEditor::rebuildPresetListForCategory(int uiCategory
     {
         auto favs = audioProcessor.getFavoriteIndices();
         if (favs.empty())
-        {
             presetModel.items.push_back(u8("-- Нет лайков (нажми \u2661) --"));
-        }
         else
         {
             for (int pIdx : favs)
             {
-                const juce::String heart = u8("\u2665 ");
-                presetModel.items.push_back(heart + presets[static_cast<size_t>(pIdx)].name);
+                presetModel.items.push_back(u8("\u2665 ") + presets[static_cast<size_t>(pIdx)].name);
                 visiblePresetIndices.push_back(pIdx);
             }
         }
@@ -599,7 +767,7 @@ void WitchSynthAudioProcessorEditor::syncPresetUI()
         }
     }
     updateLikeButtonVisual();
-    repaint(332, 12, 496, 382);
+    repaint(330, 12, 500, 382);
 }
 
 void WitchSynthAudioProcessorEditor::randomizeWitchPreset()
@@ -657,37 +825,154 @@ void WitchSynthAudioProcessorEditor::timerCallback()
     const float rawPeak = audioProcessor.peakLevel.load(std::memory_order_relaxed);
     smoothedPeak = rawPeak > smoothedPeak ? rawPeak : smoothedPeak * 0.85f;
 
-    repaint(634, 322, 188, 66);
-    repaint(1110, 440, 26, 152);
-    if (currentPage == SidePage::Arp) stepMatrix.repaint();
-    if (currentPage == SidePage::XY)  xyPad.repaint();
+    repaint(640, 322, 180, 62);
+    repaint(1108, 442, 22, 146);
+    if (currentPage == SidePage::Main)
+    {
+        repaint(26, 66, 286, 60);
+        repaint(848, 66, 286, 60);
+    }
+    else if (currentPage == SidePage::Arp) stepMatrix.repaint();
+    else if (currentPage == SidePage::XY)  xyPad.repaint();
 }
 
 void WitchSynthAudioProcessorEditor::paint(juce::Graphics& g)
 {
-    g.fillAll(Colors::bg);
+    if (!chassisCache.isNull())
+        g.drawImageAt(chassisCache, 0, 0);
+    else
+        g.fillAll(Colors::bg);
 
-    auto drawPanel = [&](int x, int y, int w, int h, const juce::String& title)
+    auto drawHardwarePanel = [&](int x, int y, int w, int h, const juce::String& title)
     {
-        g.setColour(Colors::panel);
-        g.fillRoundedRectangle(static_cast<float>(x), static_cast<float>(y), static_cast<float>(w), static_cast<float>(h), 6.0f);
+        const juce::Rectangle<float> r(static_cast<float>(x), static_cast<float>(y), static_cast<float>(w), static_cast<float>(h));
+        g.setColour(juce::Colour(0x90000000));
+        g.fillRoundedRectangle(r.translated(1.5f, 2.5f), 6.0f);
+
+        g.setGradientFill(juce::ColourGradient(Colors::panelTop.withAlpha(0.92f), 0.0f, r.getY(),
+                                               Colors::panelBot.withAlpha(0.95f), 0.0f, r.getBottom(), false));
+        g.fillRoundedRectangle(r, 6.0f);
+
+        g.setColour(juce::Colour(0x22ffffff));
+        g.drawHorizontalLine(y + 1, r.getX() + 4.0f, r.getRight() - 4.0f);
         g.setColour(Colors::border);
-        g.drawRoundedRectangle(static_cast<float>(x), static_cast<float>(y), static_cast<float>(w), static_cast<float>(h), 6.0f, 1.2f);
+        g.drawRoundedRectangle(r, 6.0f, 1.2f);
+
+        // Panel Header Strip
+        g.setColour(juce::Colour(0x35000000));
+        g.fillRoundedRectangle(r.getX() + 2.0f, r.getY() + 2.0f, r.getWidth() - 4.0f, 22.0f, 4.0f);
         g.setColour(Colors::neon);
-        g.setFont(juce::FontOptions(11.5f, juce::Font::bold));
-        g.drawText(title, x + 10, y + 6, w - 20, 18, juce::Justification::left);
+        g.setFont(juce::FontOptions(11.0f, juce::Font::bold));
+        g.drawText(title, x + 12, y + 5, w - 24, 16, juce::Justification::left);
     };
 
     juce::String leftTitle = "FILTER & TONE";
-    juce::String rightTitle = "AMP, VOICING & MORPH A<->B";
+    juce::String rightTitle = "AMP, ADSR & MORPH A<->B";
     if (currentPage == SidePage::Osc) { leftTitle = "OSC 1 & OSC 2"; rightTitle = "SUB & 2040 PHYSICS"; }
     else if (currentPage == SidePage::Arp) { leftTitle = "BIO-LFO, PUMP & TAPE"; rightTitle = "ARP & 8-STEP RATCHET"; }
     else if (currentPage == SidePage::XY) { leftTitle = "AETHER CORE (XY)"; rightTitle = "2040 MACRO MATRIX"; }
 
-    drawPanel(12, 12, 310, 382, leftTitle);
-    drawPanel(838, 12, 310, 382, rightTitle);
+    drawHardwarePanel(16, 12, 306, 382, leftTitle);
+    drawHardwarePanel(838, 12, 306, 382, rightTitle);
 
-    if (currentPage == SidePage::XY)
+    // Live Filter & ADSR Visualizers on MAIN Page
+    if (currentPage == SidePage::Main)
+    {
+        // Live Filter Graph
+        const juce::Rectangle<float> fRect(28.0f, 68.0f, 282.0f, 56.0f);
+        g.setColour(Colors::lcdBg);
+        g.fillRoundedRectangle(fRect, 4.0f);
+        g.setColour(Colors::border);
+        g.drawRoundedRectangle(fRect, 4.0f, 1.0f);
+
+        const int fType = static_cast<int>(audioProcessor.apvts.getRawParameterValue("filterType")->load());
+        const float cutoff = audioProcessor.apvts.getRawParameterValue("filterCutoff")->load();
+        const float reso = audioProcessor.apvts.getRawParameterValue("filterReso")->load();
+        const float tilt = audioProcessor.apvts.getRawParameterValue("tiltAmt")->load();
+        const float cutNorm = juce::jlimit(0.05f, 0.95f, (std::log2(cutoff / 20.0f) / 10.0f));
+        const float qPeak = juce::jlimit(0.0f, 0.72f, (reso - 0.5f) / 14.0f);
+
+        juce::Path fCurve, fFill;
+        const int steps = 72;
+        for (int i = 0; i <= steps; ++i)
+        {
+            const float xN = static_cast<float>(i) / static_cast<float>(steps);
+            float mag = 0.52f;
+            const float dist = xN - cutNorm;
+            if (fType == 0 || fType == 5) // LP / DualAcid
+            {
+                const float slope = fType == 5 ? 18.0f : 11.0f;
+                mag = dist < 0.0f ? 0.56f : 0.56f / (1.0f + std::pow(dist * slope, 2.0f));
+                mag += qPeak * std::exp(-dist * dist * 160.0f);
+            }
+            else if (fType == 1) // HP
+            {
+                mag = dist > 0.0f ? 0.56f : 0.56f / (1.0f + std::pow(-dist * 12.0f, 2.0f));
+                mag += qPeak * std::exp(-dist * dist * 160.0f);
+            }
+            else if (fType == 2) // BP
+            {
+                mag = (0.28f + qPeak * 0.7f) * std::exp(-dist * dist * 65.0f);
+            }
+            else if (fType == 3) // Formant twin peaks
+            {
+                const float p1 = cutNorm * 0.8f;
+                const float p2 = juce::jmin(0.92f, cutNorm + 0.22f);
+                mag = 0.16f + (0.45f + qPeak * 0.45f) * (std::exp(-(xN - p1) * (xN - p1) * 180.0f) + 0.8f * std::exp(-(xN - p2) * (xN - p2) * 180.0f));
+            }
+            else // Comb teeth
+            {
+                mag = 0.30f + (0.25f + qPeak * 0.45f) * (0.5f + 0.5f * std::cos((xN - cutNorm) * 45.0f));
+            }
+            mag = juce::jlimit(0.04f, 0.94f, mag + (xN - 0.5f) * tilt * 0.25f);
+            const float px = fRect.getX() + 3.0f + xN * (fRect.getWidth() - 6.0f);
+            const float py = fRect.getBottom() - 4.0f - mag * (fRect.getHeight() - 8.0f);
+            if (i == 0) { fCurve.startNewSubPath(px, py); fFill.startNewSubPath(px, fRect.getBottom() - 2.0f); fFill.lineTo(px, py); }
+            else { fCurve.lineTo(px, py); fFill.lineTo(px, py); }
+        }
+        fFill.lineTo(fRect.getRight() - 3.0f, fRect.getBottom() - 2.0f);
+        fFill.closeSubPath();
+        g.setColour(Colors::purple.withAlpha(0.24f));
+        g.fillPath(fFill);
+        g.setColour(Colors::glow);
+        g.strokePath(fCurve, juce::PathStrokeType(1.6f));
+
+        // Live ADSR Envelope Curve
+        const juce::Rectangle<float> eRect(850.0f, 68.0f, 282.0f, 56.0f);
+        g.setColour(Colors::lcdBg);
+        g.fillRoundedRectangle(eRect, 4.0f);
+        g.setColour(Colors::border);
+        g.drawRoundedRectangle(eRect, 4.0f, 1.0f);
+
+        const float a = std::sqrt(audioProcessor.apvts.getRawParameterValue("ampAttack")->load() / 4.0f);
+        const float d = std::sqrt(audioProcessor.apvts.getRawParameterValue("ampDecay")->load() / 4.0f);
+        const float s = audioProcessor.apvts.getRawParameterValue("ampSustain")->load();
+        const float r = std::sqrt(audioProcessor.apvts.getRawParameterValue("ampRelease")->load() / 6.0f);
+
+        const float ew = eRect.getWidth() - 10.0f;
+        const float eh = eRect.getHeight() - 10.0f;
+        const float x0 = eRect.getX() + 5.0f;
+        const float yBot = eRect.getBottom() - 4.0f;
+        const float xA = x0 + juce::jmax(0.02f, a * 0.28f) * ew;
+        const float xD = xA + juce::jmax(0.04f, d * 0.28f) * ew;
+        const float xS = xD + 0.22f * ew;
+        const float xR = juce::jmin(eRect.getRight() - 5.0f, xS + juce::jmax(0.04f, r * 0.28f) * ew);
+        const float yS = yBot - s * eh;
+
+        juce::Path envP, envFill;
+        envP.startNewSubPath(x0, yBot);
+        envP.lineTo(xA, yBot - eh);
+        envP.lineTo(xD, yS);
+        envP.lineTo(xS, yS);
+        envP.lineTo(xR, yBot);
+        envFill = envP;
+        envFill.closeSubPath();
+        g.setColour(Colors::purple.withAlpha(0.24f));
+        g.fillPath(envFill);
+        g.setColour(Colors::neon);
+        g.strokePath(envP, juce::PathStrokeType(1.7f));
+    }
+    else if (currentPage == SidePage::XY)
     {
         g.setColour(Colors::subText);
         g.setFont(juce::FontOptions(12.5f));
@@ -706,51 +991,56 @@ void WitchSynthAudioProcessorEditor::paint(juce::Graphics& g)
         g.drawText(u8("Кликай шаги ниже: -- (пауза) | ON | +12 | 2X (дробь)"), 850, 178, 286, 18, juce::Justification::centred);
     }
 
-    g.setColour(Colors::panel);
-    g.fillRoundedRectangle(332.0f, 12.0f, 496.0f, 382.0f, 7.0f);
-    g.setColour(Colors::purple.withAlpha(0.75f));
-    g.drawRoundedRectangle(332.0f, 12.0f, 496.0f, 382.0f, 7.0f, 1.5f);
+    // Center Hardware Console
+    drawHardwarePanel(332, 12, 496, 382, "");
 
     g.setColour(Colors::neon);
     juce::Path tri;
-    tri.addTriangle(354.0f, 20.0f, 343.0f, 44.0f, 365.0f, 44.0f);
+    tri.addTriangle(354.0f, 18.0f, 343.0f, 42.0f, 365.0f, 42.0f);
     g.strokePath(tri, juce::PathStrokeType(1.7f));
-    g.drawLine(354.0f, 27.0f, 354.0f, 41.0f, 1.7f);
-    g.drawLine(348.0f, 33.0f, 360.0f, 33.0f, 1.7f);
+    g.drawLine(354.0f, 25.0f, 354.0f, 39.0f, 1.7f);
+    g.drawLine(348.0f, 31.0f, 360.0f, 31.0f, 1.7f);
 
     g.setColour(Colors::glow);
     g.setFont(juce::FontOptions(17.5f, juce::Font::bold));
-    g.drawText("WITCHSYNTH", 374, 19, 170, 24, juce::Justification::left);
+    g.drawText("WITCHSYNTH", 374, 17, 170, 24, juce::Justification::left);
     g.setColour(Colors::subText);
-    g.setFont(juce::FontOptions(10.5f, juce::Font::bold));
-    g.drawText("v9.0 NEXUS EDITION // 100 PRESETS", 548, 23, 270, 18, juce::Justification::right);
+    g.setFont(juce::FontOptions(10.0f, juce::Font::bold));
+    g.drawText("v10.0 HARDWARE // 100 PRESETS", 548, 21, 268, 18, juce::Justification::right);
 
-    const juce::Rectangle<float> lcdFrame(342.0f, 84.0f, 476.0f, 232.0f);
+    // Recessed Cosmic LCD Backdrop (behind purple glass drawn in paintOverChildren!)
+    const juce::Rectangle<float> lcdFrame(344.0f, 80.0f, 472.0f, 236.0f);
     g.setColour(Colors::lcdBg);
     g.fillRoundedRectangle(lcdFrame, 5.0f);
-    g.setColour(Colors::purple);
-    g.drawRoundedRectangle(lcdFrame, 5.0f, 1.5f);
 
-    g.setColour(juce::Colour(0xff1a122e));
-    g.fillRect(344, 86, 472, 19);
+    // Subtle cosmic perspective grid inside LCD
+    g.setColour(Colors::purple.withAlpha(0.14f));
+    for (int gx = 370; gx < 810; gx += 36)
+        g.drawLine(static_cast<float>(gx), 104.0f, static_cast<float>(gx) + (static_cast<float>(gx) - 580.0f) * 0.25f, 290.0f, 0.8f);
+    for (int gy = 130; gy < 290; gy += 32)
+        g.drawHorizontalLine(gy, 346.0f, 814.0f);
+
+    g.setColour(juce::Colour(0xdd18102b));
+    g.fillRect(346, 82, 468, 20);
     g.setColour(Colors::neon);
     g.setFont(juce::FontOptions(10.5f, juce::Font::bold));
-    g.drawText("CATEGORY", 352, 87, 160, 17, juce::Justification::left);
-    g.drawText("PRESET", 534, 87, 260, 17, juce::Justification::left);
+    g.drawText("CATEGORY", 354, 83, 160, 18, juce::Justification::left);
+    g.drawText("PRESET", 536, 83, 260, 18, juce::Justification::left);
 
-    g.setColour(juce::Colour(0xff171029));
-    g.fillRect(344, 291, 472, 23);
+    g.setColour(juce::Colour(0xee160f26));
+    g.fillRect(346, 291, 468, 23);
     const int curIdx = audioProcessor.getCurrentPresetIndex();
     const auto& allP = getAllPresets();
     const juce::String curName = (curIdx >= 0 && curIdx < static_cast<int>(allP.size())) ? allP[static_cast<size_t>(curIdx)].name : "";
     g.setColour(Colors::glow);
     g.setFont(juce::FontOptions(13.0f, juce::Font::bold));
-    g.drawText(curName, 352, 292, 340, 21, juce::Justification::left, true);
+    g.drawText(curName, 354, 292, 340, 21, juce::Justification::left, true);
     g.setColour(Colors::subText);
     g.setFont(juce::FontOptions(10.5f));
-    g.drawText(juce::String(curIdx + 1) + " / " + juce::String(allP.size()), 700, 292, 110, 21, juce::Justification::right);
+    g.drawText(juce::String(curIdx + 1) + " / " + juce::String(allP.size()), 700, 292, 108, 21, juce::Justification::right);
 
-    const juce::Rectangle<float> scopeRect(636.0f, 324.0f, 182.0f, 58.0f);
+    // Oscilloscope
+    const juce::Rectangle<float> scopeRect(642.0f, 324.0f, 174.0f, 58.0f);
     g.setColour(Colors::lcdBg);
     g.fillRoundedRectangle(scopeRect, 4.0f);
     g.setColour(Colors::border);
@@ -773,104 +1063,147 @@ void WitchSynthAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(Colors::glow);
     g.strokePath(wave, juce::PathStrokeType(1.4f));
 
-    drawPanel(12,   404, 248, 266, "PREAMP / LO-FI");
-    drawPanel(270,  404, 186, 266, "CHORUS");
-    drawPanel(466,  404, 250, 266, "DELAY");
-    drawPanel(726,  404, 268, 266, "REVERB & SHIMMER");
-    drawPanel(1004, 404, 144, 266, "OUTPUT");
+    // Bottom 5 Separated Hardware FX Modules
+    drawHardwarePanel(16,   404, 244, 266, "PREAMP / LO-FI");
+    drawHardwarePanel(270,  404, 186, 266, "CHORUS");
+    drawHardwarePanel(466,  404, 250, 266, "DELAY");
+    drawHardwarePanel(726,  404, 268, 266, "REVERB & SHIMMER");
+    drawHardwarePanel(1004, 404, 140, 266, "OUTPUT");
 
-    const juce::Rectangle<float> meterRect(1116.0f, 444.0f, 14.0f, 142.0f);
+    // 14-Segment LED Peak Meter (Roland XV-5080 style)
+    const juce::Rectangle<float> meterRect(1110.0f, 444.0f, 16.0f, 142.0f);
     g.setColour(Colors::lcdBg);
     g.fillRoundedRectangle(meterRect, 3.0f);
     g.setColour(Colors::border);
     g.drawRoundedRectangle(meterRect, 3.0f, 1.0f);
-    const float fillH = juce::jlimit(0.0f, 1.0f, smoothedPeak) * meterRect.getHeight();
-    g.setColour(smoothedPeak > 0.92f ? Colors::hotPink : Colors::neon);
-    g.fillRoundedRectangle(meterRect.getX() + 1.0f, meterRect.getBottom() - fillH, meterRect.getWidth() - 2.0f, fillH, 2.0f);
 
-    g.setColour(juce::Colour(0xff0d0a17));
-    g.fillRoundedRectangle(12.0f, 678.0f, 1136.0f, 32.0f, 5.0f);
-    g.setColour(Colors::purple.withAlpha(0.65f));
-    g.drawRoundedRectangle(12.0f, 678.0f, 1136.0f, 32.0f, 5.0f, 1.0f);
+    const int numSegs = 14;
+    const float segH = (meterRect.getHeight() - 6.0f) / static_cast<float>(numSegs);
+    const int litSegs = static_cast<int>(std::round(juce::jlimit(0.0f, 1.0f, smoothedPeak) * static_cast<float>(numSegs)));
+    for (int s = 0; s < numSegs; ++s)
+    {
+        const float sy = meterRect.getBottom() - 3.0f - static_cast<float>(s + 1) * segH;
+        const bool lit = s < litSegs;
+        const auto segCol = (s >= 11) ? Colors::hotPink : ((s >= 8) ? Colors::glow : Colors::neon);
+        g.setColour(lit ? segCol : juce::Colour(0xff1a1329));
+        g.fillRoundedRectangle(meterRect.getX() + 2.5f, sy + 1.0f, meterRect.getWidth() - 5.0f, segH - 2.0f, 1.5f);
+    }
+
+    // Bottom Russian Tooltip HUD Bar
+    const int hudY = getHeight() - 38;
+    g.setColour(juce::Colour(0xff0b0813));
+    g.fillRoundedRectangle(16.0f, static_cast<float>(hudY), 1128.0f, 30.0f, 4.0f);
+    g.setColour(Colors::border);
+    g.drawRoundedRectangle(16.0f, static_cast<float>(hudY), 1128.0f, 30.0f, 4.0f, 1.0f);
     g.setColour(Colors::glow);
-    g.setFont(juce::FontOptions(12.5f));
-    g.drawText(u8("ПОДСКАЗКА: ") + activeHelpText, 22, 680, 1116, 28, juce::Justification::left, true);
+    g.setFont(juce::FontOptions(12.2f));
+    g.drawText(u8("ПОДСКАЗКА: ") + activeHelpText, 24, hudY + 1, 1112, 28, juce::Justification::left, true);
+}
+
+void WitchSynthAudioProcessorEditor::paintOverChildren(juce::Graphics& g)
+{
+    // Recessed Translucent Purple Glass Pane + Glare over LCD Screen!
+    const juce::Rectangle<float> lcdFrame(344.0f, 80.0f, 472.0f, 236.0f);
+
+    // Subtle purple glass tint + diagonal specular sheen
+    juce::ColourGradient glassGrad(juce::Colour(0x26e0aaff), 344.0f, 80.0f,
+                                   juce::Colour(0x048b3dff), 620.0f, 240.0f, false);
+    glassGrad.addColour(0.45, juce::Colour(0x0a9d4edd));
+    g.setGradientFill(glassGrad);
+    g.fillRoundedRectangle(lcdFrame, 5.0f);
+
+    // Recessed inner top/left shadow (makes LCD sit physically behind the glass)
+    g.setColour(juce::Colour(0xaa020106));
+    g.drawRoundedRectangle(lcdFrame.reduced(0.5f), 5.0f, 2.5f);
+    g.setColour(Colors::purple.withAlpha(0.75f));
+    g.drawRoundedRectangle(lcdFrame, 5.0f, 1.2f);
+    g.setColour(juce::Colour(0x35ffffff));
+    g.drawHorizontalLine(81, 350.0f, 810.0f);
 }
 
 void WitchSynthAudioProcessorEditor::resized()
 {
-    pageMainBtn.setBounds(342, 54, 115, 23);
-    pageOscBtn.setBounds(462, 54, 115, 23);
-    pageArpBtn.setBounds(582, 54, 115, 23);
-    pageXyBtn.setBounds(702, 54, 116, 23);
+    if (chassisCache.isNull() || chassisCache.getWidth() != getWidth() || chassisCache.getHeight() != getHeight())
+        buildChassisTexture();
 
-    categoryList.setBounds(344, 106, 180, 184);
-    presetList.setBounds(528, 106, 288, 184);
+    pageMainBtn.setBounds(344, 52, 115, 22);
+    pageOscBtn.setBounds(463, 52, 115, 22);
+    pageArpBtn.setBounds(582, 52, 115, 22);
+    pageXyBtn.setBounds(701, 52, 115, 22);
 
-    prevBtn.setBounds(342, 324, 34, 26);
-    nextBtn.setBounds(380, 324, 34, 26);
-    likeBtn.setBounds(418, 324, 52, 26);
-    rndBtn.setBounds(474, 324, 72, 26);
-    initBtn.setBounds(550, 324, 76, 26);
-    lockFxBtn.setBounds(342, 356, 138, 26);
-    panicBtn.setBounds(486, 356, 140, 26);
+    categoryList.setBounds(346, 104, 178, 185);
+    presetList.setBounds(528, 104, 286, 185);
 
-    filterTypeBox.setBounds(24, 42, 286, 24);
-    filterCutoff.setBounds(22, 102, 68, 66);
-    filterReso.setBounds(96, 102, 68, 66);
-    filterDrive.setBounds(170, 102, 68, 66);
-    filterEnvAmt.setBounds(244, 102, 68, 66);
-    filterDecay.setBounds(22, 218, 68, 66);
-    filterKeyTrack.setBounds(96, 218, 68, 66);
-    tiltAmt.setBounds(170, 218, 68, 66);
-    stereoWidth.setBounds(244, 218, 68, 66);
+    prevBtn.setBounds(344, 324, 32, 26);
+    nextBtn.setBounds(380, 324, 32, 26);
+    likeBtn.setBounds(416, 324, 44, 26);
+    rndBtn.setBounds(464, 324, 54, 26);
+    initBtn.setBounds(522, 324, 54, 26);
+    kbdBtn.setBounds(580, 324, 54, 26);
+    lockFxBtn.setBounds(344, 356, 142, 26);
+    panicBtn.setBounds(492, 356, 142, 26);
 
-    polyModeBox.setBounds(850, 42, 92, 24);
-    morphPresetBox.setBounds(948, 42, 188, 24);
-    ampA.setBounds(848, 102, 68, 66);
-    ampD.setBounds(922, 102, 68, 66);
-    ampS.setBounds(996, 102, 68, 66);
-    ampR.setBounds(1070, 102, 68, 66);
-    glideTime.setBounds(848, 218, 68, 66);
-    snapAmt.setBounds(922, 218, 68, 66);
-    airAmt.setBounds(996, 218, 68, 66);
-    morphAmt.setBounds(1070, 218, 68, 66);
+    // Page 1: MAIN (below live Filter/ADSR curves!)
+    filterTypeBox.setBounds(28, 40, 282, 22);
+    filterCutoff.setBounds(26, 152, 66, 58);
+    filterReso.setBounds(98, 152, 66, 58);
+    filterDrive.setBounds(170, 152, 66, 58);
+    filterEnvAmt.setBounds(242, 152, 66, 58);
+    filterDecay.setBounds(26, 258, 66, 58);
+    filterKeyTrack.setBounds(98, 258, 66, 58);
+    tiltAmt.setBounds(170, 258, 66, 58);
+    stereoWidth.setBounds(242, 258, 66, 58);
 
-    osc1WaveBox.setBounds(24, 42, 138, 24);
-    osc2WaveBox.setBounds(170, 42, 138, 24);
-    osc1Oct.setBounds(18, 102, 56, 62);
-    osc1Semi.setBounds(78, 102, 56, 62);
-    pwmWidth.setBounds(138, 102, 56, 62);
-    xModAmt.setBounds(198, 102, 56, 62);
-    osc1Detune.setBounds(258, 102, 56, 62);
-    osc1Level.setBounds(18, 218, 56, 62);
-    osc2Oct.setBounds(78, 218, 56, 62);
-    osc2Semi.setBounds(138, 218, 56, 62);
-    osc2Unison.setBounds(198, 218, 56, 62);
-    osc2Level.setBounds(258, 218, 56, 62);
+    polyModeBox.setBounds(850, 40, 88, 22);
+    morphPresetBox.setBounds(944, 40, 188, 22);
+    ampA.setBounds(848, 152, 66, 58);
+    ampD.setBounds(920, 152, 66, 58);
+    ampS.setBounds(992, 152, 66, 58);
+    ampR.setBounds(1064, 152, 66, 58);
+    glideTime.setBounds(848, 258, 66, 58);
+    snapAmt.setBounds(920, 258, 66, 58);
+    airAmt.setBounds(992, 258, 66, 58);
+    morphAmt.setBounds(1064, 258, 66, 58);
 
-    subLevel.setBounds(884, 102, 82, 70);
-    entropyAmt.setBounds(1018, 102, 82, 70);
-    gravityAmt.setBounds(884, 224, 82, 70);
-    ghostVoxAmt.setBounds(1018, 224, 82, 70);
+    // Page 2: OSC
+    osc1WaveBox.setBounds(28, 42, 136, 24);
+    osc2WaveBox.setBounds(172, 42, 136, 24);
+    osc1Oct.setBounds(22, 102, 56, 60);
+    osc1Semi.setBounds(82, 102, 56, 60);
+    pwmWidth.setBounds(142, 102, 56, 60);
+    xModAmt.setBounds(202, 102, 56, 60);
+    osc1Detune.setBounds(262, 102, 56, 60);
+    osc1Level.setBounds(22, 218, 56, 60);
+    osc2Oct.setBounds(82, 218, 56, 60);
+    osc2Semi.setBounds(142, 218, 56, 60);
+    osc2Unison.setBounds(202, 218, 56, 60);
+    osc2Level.setBounds(262, 218, 56, 60);
 
-    lfoTargetBox.setBounds(24, 42, 138, 24);
-    lfoShapeBox.setBounds(170, 42, 138, 24);
-    lfoRate.setBounds(30, 102, 74, 66);
-    lfoDepth.setBounds(130, 102, 74, 66);
-    pitchPunch.setBounds(230, 102, 74, 66);
-    pumpAmt.setBounds(30, 218, 74, 66);
-    noiseLevel.setBounds(130, 218, 74, 66);
-    vhsDrift.setBounds(230, 218, 74, 66);
+    subLevel.setBounds(884, 102, 82, 68);
+    entropyAmt.setBounds(1018, 102, 82, 68);
+    gravityAmt.setBounds(884, 224, 82, 68);
+    ghostVoxAmt.setBounds(1018, 224, 82, 68);
 
-    arpModeBox.setBounds(850, 42, 286, 24);
-    arpRate.setBounds(952, 98, 82, 64);
-    stepMatrix.setBounds(852, 206, 282, 66);
+    // Page 3: ARP & LFO
+    lfoTargetBox.setBounds(28, 42, 136, 24);
+    lfoShapeBox.setBounds(172, 42, 136, 24);
+    lfoRate.setBounds(32, 102, 74, 64);
+    lfoDepth.setBounds(132, 102, 74, 64);
+    pitchPunch.setBounds(232, 102, 74, 64);
+    pumpAmt.setBounds(32, 218, 74, 64);
+    noiseLevel.setBounds(132, 218, 74, 64);
+    vhsDrift.setBounds(232, 218, 74, 64);
 
-    xyPad.setBounds(26, 46, 282, 330);
+    arpModeBox.setBounds(850, 42, 282, 24);
+    arpRate.setBounds(952, 98, 82, 62);
+    stepMatrix.setBounds(852, 206, 278, 66);
 
-    distBtn.setBounds(22, 434, 72, 22);
-    distModeBox.setBounds(98, 434, 152, 22);
+    // Page 4: XY
+    xyPad.setBounds(28, 46, 282, 330);
+
+    // Bottom 5 Separated FX Boxes
+    distBtn.setBounds(26, 434, 72, 22);
+    distModeBox.setBounds(102, 434, 148, 22);
     distDrive.setBounds(44, 486, 66, 60);
     distMix.setBounds(160, 486, 66, 60);
     crushAmount.setBounds(44, 582, 66, 60);
@@ -893,6 +1226,9 @@ void WitchSynthAudioProcessorEditor::resized()
     reverbMix.setBounds(886, 486, 66, 60);
     haloAmt.setBounds(827, 582, 66, 60);
 
-    masterGain.setBounds(1022, 464, 78, 72);
-    tapeStopBtn.setBounds(1018, 602, 116, 36);
+    masterGain.setBounds(1018, 464, 76, 72);
+    tapeStopBtn.setBounds(1016, 602, 114, 34);
+
+    if (showKeyboard)
+        midiKeyboard.setBounds(16, 678, 1128, 68);
 }
