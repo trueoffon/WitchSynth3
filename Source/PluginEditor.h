@@ -105,24 +105,20 @@ private:
     juce::TextButton rndBtn{ "RND" }, initBtn{ "INIT" }, kbdBtn{ "KBD" }, lockFxBtn{ "LOCK" }, panicBtn{ "PANIC" };
     juce::TextButton pageMainBtn{ "MAIN" }, pageOscBtn{ "OSC" }, pageArpBtn{ "ARP" }, pageXyBtn{ "XY" };
 
-    // Page 1: MAIN
-    juce::ComboBox filterTypeBox, polyModeBox, scaleLockBox, chordModeBox, morphPresetBox;
-    juce::Slider filterCutoff, filterReso, filterEnvAmt, filterDecay, tiltAmt, stereoWidth;
+    juce::ComboBox filterTypeBox, polyModeBox, morphPresetBox;
+    juce::Slider filterCutoff, filterReso, filterDrive, filterEnvAmt, filterDecay, filterKeyTrack, tiltAmt, stereoWidth;
     juce::Slider ampA, ampD, ampS, ampR, glideTime, snapAmt, airAmt, morphAmt;
 
-    // Page 2: OSC & 2040
     juce::ComboBox osc1WaveBox, osc2WaveBox;
-    juce::Slider osc1Oct, pwmWidth, xModAmt, osc1Detune, osc1Level;
-    juce::Slider osc2Oct, osc2Semi, osc2Unison, osc2Level, subLevel, gravityAmt, ghostVoxAmt;
+    juce::Slider osc1Oct, osc1Semi, pwmWidth, xModAmt, osc1Detune, osc1Level;
+    juce::Slider osc2Oct, osc2Semi, osc2Unison, osc2Level, subLevel, entropyAmt, gravityAmt, ghostVoxAmt;
 
-    // Page 3: ARP & LFO
     juce::ComboBox lfoTargetBox, lfoShapeBox, arpModeBox;
-    juce::Slider lfoRate, lfoDepth, arpRate, pitchPunch, pumpAmt, vhsDrift;
+    juce::Slider lfoRate, lfoDepth, arpRate, pitchPunch, pumpAmt, noiseLevel, vhsDrift;
 
-    // Bottom Separated FX Controls (always visible, Noise On/Off right here!)
-    juce::ToggleButton distBtn{ "DIST" }, noiseBtn{ "NOISE" }, chorusBtn{ "CHORUS" }, delayBtn{ "DELAY" }, reverbBtn{ "REVERB" }, freezeBtn{ "FREEZE" }, tapeStopBtn{ "T.STOP" };
+    juce::ToggleButton distBtn{ "DIST" }, chorusBtn{ "CHORUS" }, delayBtn{ "DELAY" }, reverbBtn{ "REVERB" }, freezeBtn{ "FREEZE" }, tapeStopBtn{ "T.STOP" };
     juce::ComboBox distModeBox, delayModeBox;
-    juce::Slider distDrive, distMix, crushAmount, noiseLevel, lowCutHz;
+    juce::Slider distDrive, distMix, crushAmount, lowCutHz;
     juce::Slider chorusMix, chorusRate, chorusDepth;
     juce::Slider delayTime, delayFb, delayMix;
     juce::Slider reverbSize, reverbMix, haloAmt, masterGain;
