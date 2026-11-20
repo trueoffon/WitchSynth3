@@ -105,7 +105,7 @@ private:
     juce::TextButton rndBtn{ "RND" }, initBtn{ "INIT" }, kbdBtn{ "KBD" }, lockFxBtn{ "LOCK" }, panicBtn{ "PANIC" };
     juce::TextButton pageMainBtn{ "MAIN" }, pageOscBtn{ "OSC" }, pageArpBtn{ "ARP" }, pageXyBtn{ "XY" };
 
-    // Page 1: MAIN (Simple & Musical!)
+    // Page 1: MAIN
     juce::ComboBox filterTypeBox, polyModeBox, scaleLockBox, chordModeBox, morphPresetBox;
     juce::Slider filterCutoff, filterReso, filterEnvAmt, filterDecay, tiltAmt, stereoWidth;
     juce::Slider ampA, ampD, ampS, ampR, glideTime, snapAmt, airAmt, morphAmt;
