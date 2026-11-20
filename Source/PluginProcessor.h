@@ -65,6 +65,7 @@ private:
         static constexpr int maxUnison = 7;
         static constexpr int combSize = 4096;
         bool active = false;
+        bool keyDown = false;
         int midiNote = -1;
         float velocity = 0.0f;
         float currentFreq = 440.0f;
